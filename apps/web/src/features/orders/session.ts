@@ -21,8 +21,8 @@ export async function getSellerSession(orderId: string): Promise<SellerSession> 
     session = await pending;
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
   } else {
-    session = await apiFetch<SellerSession>("/order-access/session");
+    session = await apiFetch<SellerSession>(`/order-access/session?order_id=${encodeURIComponent(orderId)}`);
   }
-  if (session.order_id !== orderId) throw new ApiError("请使用此订单的完整私有链接。", 401, "http");
+  if (session.order_id !== orderId) throw new ApiError("请登录创建此订单的卖家账号。", 401, "http");
   return session;
 }

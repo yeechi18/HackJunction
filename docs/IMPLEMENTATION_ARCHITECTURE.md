@@ -231,8 +231,11 @@ SellerConfirmation = version_id, content_hash, asset_hashes, listing_price,
 
 | 接口 | 用途 |
 |---|---|
-| `POST /orders` | 建订单、保存初始资料及来源渠道，返回私有入口 |
-| `POST /order-access/exchange` | 私有令牌交换限定订单的安全会话 |
+| `POST /seller/auth/verification-code` | 向注册邮箱发送一次性验证码，使用 QQ SMTP；带有效期、发送限频和尝试次数限制 |
+| `POST /seller/auth/register`、`POST /seller/auth/login`、`GET /seller/auth/session`、`POST /seller/auth/logout` | 卖家账号与会话 |
+| `GET /seller/orders` | 分页查询当前卖家订单 |
+| `POST /orders` | 登录并校验CSRF后建订单，自动绑定当前卖家账号 |
+| `POST /order-access/exchange` | 校验链接；账号订单仍须匹配登录账号，链接不授予其他卖家权限 |
 | `GET /orders/{id}`、`GET /orders/{id}/events?after=...` | 卖家可见摘要与增量进度；首版轮询 |
 | `POST /orders/{id}/messages`、`POST /orders/{id}/supplements` | 对话、补资料与事实修订请求 |
 | `POST /orders/{id}/assets` | 授权上传附件，校验大小与实际文件类型 |
@@ -245,7 +248,7 @@ SellerConfirmation = version_id, content_hash, asset_hashes, listing_price,
 | `POST /internal/orders/{id}/retries` | 对指定失败运行发出受控重试命令 |
 | `POST /internal/support-tickets/{id}/messages` | 人工客服回复，留操作者记录 |
 
-“无需注册”仍需要订单级授权。私有入口使用高熵令牌，数据库只存摘要，可撤销和设置过期时间；建议令牌放 URL fragment，交换会话后从地址栏移除。订单 ID 本身不提供权限。生产使用 HTTPS、HttpOnly/Secure 会话、同源部署和写入请求的 CSRF 防护。
+卖家需通过邮箱验证码注册，再使用邮箱密码登录。密码8–12位、字母/数字/符号至少两类，验证码不回传浏览器接口、不记日志；数据库存带密钥摘要，10分钟失效、60秒重发间隔、最多5次错误。QQ SMTP 通过本机配置读取授权码并验证TLS证书。订单绑定 `seller_accounts.id`；账号密码使用 Argon2 摘要，账号会话独立于负责人会话。所有新订单的创建、资料写入与文件访问由后端验证当前账号归属，写操作校验 CSRF；订单ID和完整链接都不能代替账号权限。登录会话使用 HttpOnly/SameSite cookie，生产设置 Secure 并使用 HTTPS。同源部署，账号会话默认7天，负责人默认12小时；退出撤销当前会话。旧订单不做认领，本机旧数据已单次清理，常规迁移不删数据。
 
 API 每次校验订单归属；附件与下载也必须授权。内部端单独认证，卖家响应使用明确的公开字段白名单，不能直接序列化内部订单对象。日志隐藏令牌、密钥和卖家敏感信息；外部资料作为待分析数据，不得改变工具权限。
 

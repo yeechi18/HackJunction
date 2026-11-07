@@ -11,10 +11,11 @@ from fastapi import HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from company.config import Settings
-from company.persistence.models import AuthSession, OrderAccess, now
+from company.persistence.models import AuthSession, Order, OrderAccess, now
 
 SELLER_COOKIE = "seller_session"
 OWNER_COOKIE = "owner_session"
+ACCOUNT_COOKIE = "account_session"
 
 
 def token_hash(token: str) -> str:
@@ -73,7 +74,12 @@ async def get_session(
 
 
 async def create_session(
-    database: AsyncSession, settings: Settings, kind: str, order_id: UUID | None = None
+    database: AsyncSession,
+    settings: Settings,
+    kind: str,
+    order_id: UUID | None = None,
+    *,
+    account_id: UUID | None = None,
 ) -> tuple[str, AuthSession]:
     require_session_secret(settings)
     token = secrets.token_urlsafe(32)
@@ -82,6 +88,7 @@ async def create_session(
         token_hash=token_hash(token),
         kind=kind,
         order_id=order_id,
+        account_id=account_id,
         expires_at=now() + timedelta(hours=hours),
     )
     database.add(session)
@@ -93,7 +100,11 @@ def set_session_cookie(
     response: Response, settings: Settings, token: str, session: AuthSession
 ) -> None:
     response.set_cookie(
-        OWNER_COOKIE if session.kind == "owner" else SELLER_COOKIE,
+        ACCOUNT_COOKIE
+        if session.kind == "account"
+        else OWNER_COOKIE
+        if session.kind == "owner"
+        else SELLER_COOKIE,
         token,
         httponly=True,
         secure=settings.app_env == "production",
@@ -106,7 +117,26 @@ def set_session_cookie(
 async def exchange_link(
     database: AsyncSession, settings: Settings, order_id: UUID, token: str
 ) -> tuple[str, AuthSession]:
+    await validate_order_link(database, order_id, token)
+    return await create_session(database, settings, "seller", order_id)
+
+
+async def validate_order_link(database: AsyncSession, order_id: UUID, token: str) -> None:
     link = await database.get(OrderAccess, token_hash(token))
     if link is None or link.order_id != order_id or link.expires_at <= now():
         raise HTTPException(401, "Order link is invalid or expired.")
-    return await create_session(database, settings, "seller", order_id)
+
+
+async def seller_order_session(request: Request, database: AsyncSession, order_id: UUID):
+    order = await database.get(Order, order_id)
+    if order is None:
+        raise HTTPException(404, "Order not found.")
+    if order.seller_account_id is not None:
+        token = request.cookies.get(ACCOUNT_COOKIE)
+        session = await get_session(database, token, "account")
+        if session.account_id != order.seller_account_id:
+            raise HTTPException(404, "Order not found.")
+    else:
+        token = request.cookies.get(SELLER_COOKIE)
+        session = await get_session(database, token, "seller", order_id)
+    return token, session

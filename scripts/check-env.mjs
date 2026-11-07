@@ -22,6 +22,7 @@ report('uv', uv.status === 0, uv.status === 0 ? uv.stdout.trim() : 'install uv a
 report('backend .env', existsSync(path.join(root, '.env')), 'run node scripts/init-env.mjs if missing');
 report('frontend environment', existsSync(path.join(root, 'apps/web/.env.local')));
 report('MiMo key', Boolean(value('MIMO_API_KEY')), 'presence only; actual API validation is separate');
+report('registration email', Boolean(value('SMTP_PASSWORD')), 'SMTP authorization code presence only; send a verification code from the register page to validate delivery');
 let address;
 try { address = new URL(value('DATABASE_URL')?.replace('postgresql+psycopg:', 'postgresql:')); }
 catch { report('database configuration', false, 'set DATABASE_URL in .env'); }

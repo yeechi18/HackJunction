@@ -21,7 +21,9 @@ from company.persistence.models import (
     OrderAccess,
     now,
 )
+from company.schemas.orders import CreateOrder
 from company.services.access import token_hash
+from company.services.orders import create_order
 
 pytestmark = pytest.mark.integration
 OWNER_PASSWORD = "test-only-owner-password-not-used-outside-this-test"
@@ -50,18 +52,22 @@ async def context(postgres_test_settings: Settings):
             )
 
         async def create(customer, facts=None):
-            response = await customer.post(
-                "/api/v1/orders",
-                json={
-                    "seller_name": "Test Seller",
-                    "product_name": "Fictional cable clips",
-                    "contact": "private@example.invalid",
-                    "facts": facts or [],
-                    "is_demo": True,
-                },
-            )
-            assert response.status_code == 201, response.text
-            result = response.json()
+            # Legacy capability fixtures are internal; the public create route requires an account.
+            async with app.state.database.sessions() as database:
+                response = await create_order(
+                    database,
+                    settings,
+                    CreateOrder(
+                        **{
+                            "seller_name": "Test Seller",
+                            "product_name": "Fictional cable clips",
+                            "contact": "private@example.invalid",
+                            "facts": facts or [],
+                            "is_demo": True,
+                        }
+                    ),
+                )
+            result = response.model_dump(mode="json")
             created_ids.append(UUID(result["id"]))
             return result
 

@@ -249,10 +249,15 @@ async def internal_detail(database: AsyncSession, order: Order) -> InternalOrder
 
 
 async def create_order(
-    database: AsyncSession, settings: Settings, body: CreateOrder
+    database: AsyncSession,
+    settings: Settings,
+    body: CreateOrder,
+    *,
+    seller_account_id: UUID | None = None,
 ) -> CreatedOrder:
     order = Order(
         seller_name=body.seller_name,
+        seller_account_id=seller_account_id,
         contact=body.contact,
         product_name=body.product_name,
         is_demo=body.is_demo,

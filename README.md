@@ -68,6 +68,16 @@ uv run --project apps/server company-worker
 
 PowerShell若拦截 `npm.ps1`，可将命令中的 `npm` 改为 `npm.cmd`。安装运行时后重新打开终端。前端或API端口被占用时先确认是否已有本项目进程，不盲目结束其他程序。
 
+## 卖家账号与订单
+
+先在 [卖家注册](http://127.0.0.1:3000/seller/register) 输入邮箱并收取验证码，创建账号（密码8–12位，字母/数字/特殊符号至少两类），之后 [登录](http://127.0.0.1:3000/seller/login) 提交商品。订单自动绑定当前账号，在 [我的订单](http://127.0.0.1:3000/seller/orders) 查看；换浏览器或重启后重新登录即可找回，不依赖私有链接。其他卖家即使拿到完整链接也无法访问。
+
+本次升级首次需执行 `uv run --project apps/server company-db-init`，再重启 API 和 worker；以后正常启动即可。本机已完成迁移，并按要求清空之前的开发/演示订单及图片，负责人账号保持原样。数据清理是此次本机操作，迁移命令本身不会清空订单。
+
+卖家密码使用 Argon2 摘要，登录保存在 HttpOnly 会话 cookie 中；默认7天过期，可主动退出。注册已要求邮箱验证码，当前尚无忘记密码流程，请记住注册邮箱和密码。本机库与公网演示库独立，两边分别注册，账号和订单不互通。
+
+QQ 发件邮箱与 SMTP 授权码配置见 [邮箱配置说明](docs/EMAIL_SETUP.md)。当前本机已升级至 `0010_registration_email`；其他机器先 `uv sync --project apps/server --locked --group dev`，再执行迁移并重启。
+
 ## 验证
 
 ```text
@@ -99,7 +109,7 @@ MiMo烟测会使用真实模型额度，输出4项能力结果和脱敏用量报
 
 设计与实施分别见 [项目概要](docs/PROJECT_OVERVIEW.md)、[架构](docs/IMPLEMENTATION_ARCHITECTURE.md)、[开发计划](docs/DEVELOPMENT_PLAN.md)、[新增参考采纳决定](docs/REFERENCE_DECISIONS.md)。
 
-完整演示和测试边界见 [运行手册](docs/DEMO_RUNBOOK.md)，公网部署准备见 [部署说明](deploy/README.md)。当前真实MiMo模拟闭环示例可从负责人订单列表查看历史记录；只有明确标为虚构的模拟商品页才会公开。
+完整演示和测试边界见 [运行手册](docs/DEMO_RUNBOOK.md)，公网部署准备见 [部署说明](deploy/README.md)。只有明确标为虚构的模拟商品页才会公开；旧演示记录已按要求清空，可按验收指南重新创建。
 
 ## 临时公网演示与验收
 
@@ -107,4 +117,4 @@ MiMo烟测会使用真实模型额度，输出4项能力结果和脱敏用量报
 
 人工完整操作见 [用户验收指南](docs/USER_TEST_GUIDE.md)，文件与代码量见 [实现清单](docs/FILE_INVENTORY.md)。公网只改变访问方式，真实MiMo与模拟Amazon的功能边界保持一致。
 
-每次提交解决的问题、修改内容、验证结果和运行影响统一记录在 [变更日志](CHANGELOG.md)。开发验收过程保留在 `docs/PROGRESS.md`，两者分别用于追踪 Git 提交与开发阶段。
+每次提交解决的问题、修改内容、验证结果和运行影响统一记录在 [变更日志](docs/CHANGELOG.md)。开发验收过程保留在 `docs/PROGRESS.md`，两者分别用于追踪 Git 提交与开发阶段。

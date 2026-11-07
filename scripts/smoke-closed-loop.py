@@ -2,7 +2,7 @@
 
 Run with uv run --project apps/server python scripts/smoke-closed-loop.py --stage m5.
 Later stages resume the same local case; this intentionally consumes model tokens.
-The ignored local state contains an order access token and must never be shared.
+The ignored local state contains an order token; never share it.
 """
 
 import argparse
@@ -108,12 +108,18 @@ def main(stage: str) -> None:
         httpx.Client(base_url="http://127.0.0.1:3000/api/v1", timeout=30) as seller,
         httpx.Client(base_url="http://127.0.0.1:3000/api/v1", timeout=30) as owner,
     ):
+        seller_file = REPO_ROOT / "var/local-test-seller.txt"
+        assert seller_file.exists(), "Register and verify a seller in the UI, then set email/password in var/local-test-seller.txt."
+        seller_credentials = dict(line.split("=", 1) for line in seller_file.read_text().splitlines() if "=" in line)
+        login = seller.post("/seller/auth/login", json=seller_credentials)
+        assert login.status_code == 200, "Verified seller login failed."
         if STATE.exists():
             state = json.loads(STATE.read_text())
         else:
             assert stage == "m5", "Create the initial case using --stage m5 first."
             r = seller.post(
                 "/orders",
+                headers={"X-CSRF-Token": login.json()["csrf_token"]},
                 json={
                     "seller_name": "闭环验收虚构卖家",
                     "product_name": "Fictional Silicone Desk Cable Clips",

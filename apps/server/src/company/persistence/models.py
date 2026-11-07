@@ -27,9 +27,32 @@ class Base(DeclarativeBase):
     metadata = metadata
 
 
+class SellerAccount(Base):
+    __tablename__ = "seller_accounts"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    display_name: Mapped[str] = mapped_column(String(200))
+    password_hash: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+    email: Mapped[str] = mapped_column(String(254), primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    nonce: Mapped[str] = mapped_column(String(64))
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Order(Base):
     __tablename__ = "orders"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    seller_account_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("seller_accounts.id", ondelete="RESTRICT"), index=True
+    )
     seller_name: Mapped[str] = mapped_column(String(200))
     contact: Mapped[str | None] = mapped_column(String(500))
     product_name: Mapped[str] = mapped_column(String(300))
@@ -66,6 +89,9 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     kind: Mapped[str] = mapped_column(String(16))
+    account_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("seller_accounts.id", ondelete="CASCADE"), index=True
+    )
     order_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"), index=True
     )

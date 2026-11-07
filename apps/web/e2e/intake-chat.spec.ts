@@ -1,7 +1,9 @@
+import { registerSeller } from "./seller-account";
 import { expect, test } from "@playwright/test";
 
 test("获客聊天显示处理反馈，人工接管暂停，负责人结束后恢复回复", async ({ page: seller, browser, baseURL }) => {
   test.skip(!process.env.E2E_OWNER_PASSWORD, "需要隔离测试栈提供负责人账号");
+  await registerSeller(seller.request);
   await seller.goto("/orders/new");
   await expect(seller.getByRole("link", { name: /负责人入口/ })).toHaveAttribute("href", "/internal/login");
   await seller.getByLabel(/你的称呼/).fill("聊天验收虚构卖家");

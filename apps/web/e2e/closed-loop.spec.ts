@@ -1,3 +1,4 @@
+import { registerSeller } from "./seller-account";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
@@ -35,7 +36,8 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
   expect(password).toBeTruthy();
   const runtimeErrors: string[] = [];
   seller.on("pageerror", error => runtimeErrors.push(error.message));
-  const created = await request.post("/api/v1/orders", { data: {
+  const account = await registerSeller(seller.request);
+  const created = await seller.request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: {
     seller_name: "离线页面闭环模拟卖家", product_name: `Fictional Browser Cable Clips ${Date.now()}`,
     facts, is_demo: true,
   } });

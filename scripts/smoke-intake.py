@@ -29,7 +29,12 @@ def worker(order_id):
 def main():
     checks = []
     with httpx.Client(base_url="http://127.0.0.1:3000/api/v1", timeout=20) as client:
-        created = client.post("/orders", json={
+        seller_file = REPO_ROOT / "var/local-test-seller.txt"
+        assert seller_file.exists(), "Register and verify a seller in the UI, then set email/password in var/local-test-seller.txt."
+        seller_credentials = dict(line.split("=", 1) for line in seller_file.read_text().splitlines() if "=" in line)
+        login = client.post("/seller/auth/login", json=seller_credentials)
+        assert login.status_code == 200, "Verified seller login failed."
+        created = client.post("/orders", headers={"X-CSRF-Token": login.json()["csrf_token"]}, json={
             "seller_name": "M3验收模拟卖家", "product_name": "[M3验收]虚构桌面理线夹",
             "facts": FACTS, "is_demo": True,
         })

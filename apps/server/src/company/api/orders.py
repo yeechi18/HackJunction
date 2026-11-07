@@ -19,11 +19,12 @@ from company.schemas.orders import (
 )
 from company.services import orders
 from company.services.access import (
+    ACCOUNT_COOKIE,
     OWNER_COOKIE,
-    SELLER_COOKIE,
     check_csrf,
     check_origin,
     get_session,
+    seller_order_session,
 )
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -38,15 +39,14 @@ async def read_access(request: Request, database: DB, order_id: UUID) -> str:
         except HTTPException as error:
             if error.status_code != 401:
                 raise
-    await get_session(database, request.cookies.get(SELLER_COOKIE), "seller", order_id)
+    await seller_order_session(request, database, order_id)
     return "seller"
 
 
 async def seller_write(
     request: Request, database: DB, settings: Configuration, order_id: UUID
 ) -> None:
-    token = request.cookies.get(SELLER_COOKIE)
-    await get_session(database, token, "seller", order_id)
+    token, _ = await seller_order_session(request, database, order_id)
     check_csrf(request, settings, token)
 
 
@@ -55,7 +55,12 @@ async def create(
     body: CreateOrder, request: Request, database: DB, settings: Configuration
 ) -> CreatedOrder:
     check_origin(request, settings)
-    return await orders.create_order(database, settings, body)
+    token = request.cookies.get(ACCOUNT_COOKIE)
+    session = await get_session(database, token, "account")
+    if session.account_id is None:
+        raise HTTPException(401, "Seller sign-in is required.")
+    check_csrf(request, settings, token)
+    return await orders.create_order(database, settings, body, seller_account_id=session.account_id)
 
 
 @router.get("/{order_id}", response_model=OrderSummary)

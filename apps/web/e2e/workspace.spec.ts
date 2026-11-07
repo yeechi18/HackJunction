@@ -1,3 +1,4 @@
+import { registerSeller } from "./seller-account";
 import { expect, test } from "@playwright/test";
 
 test("登录表单在脚本未加载时禁止提交密码", async ({ browser, baseURL }) => {
@@ -12,6 +13,7 @@ test("登录表单在脚本未加载时禁止提交密码", async ({ browser, ba
 });
 
 test("首页与状态页可访问，移动端能进入商品资料表单", async ({ page }) => {
+  await registerSeller(page.request);
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("说好英语");
   await expect(page.getByText("虚构演示样例", { exact: true })).toBeVisible();
@@ -29,6 +31,7 @@ test("首页与状态页可访问，移动端能进入商品资料表单", async
 test("虚构订单支持不完整建单、私有会话恢复、消息与资料补充", async ({ page, browser }) => {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
   const productName = `Playwright 虚构理线夹 ${suffix}`;
+  await registerSeller(page.request);
   await page.goto("/orders/new");
   await page.getByLabel(/你的称呼/).fill("Playwright 演示卖家");
   await page.getByLabel(/中文商品名/).fill(productName);
@@ -90,7 +93,8 @@ test("内部入口要求登录，负责人可查看演示订单并退出", async
   const password = process.env.E2E_OWNER_PASSWORD;
   test.skip(!password, "设置 E2E_OWNER_PASSWORD 后验证真实负责人登录；测试不读取或展示本地管理员凭据。");
   const productName = `Playwright 内部演示 ${Date.now()}`;
-  const response = await request.post("/api/v1/orders", { data: { seller_name: "Playwright 内部演示卖家", product_name: productName, facts: [], is_demo: true } });
+  const account = await registerSeller(request);
+  const response = await request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: { seller_name: "Playwright 内部演示卖家", product_name: productName, facts: [], is_demo: true } });
   expect(response.status()).toBe(201);
   await page.goto("/internal/orders");
   await expect(page.getByRole("heading", { name: "请先登录工作台" })).toBeVisible();

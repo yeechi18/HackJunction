@@ -71,4 +71,6 @@ node scripts/test-stack.mjs
 
 `.github/workflows/check.yml` 包含 Windows/macOS 离线检查与 Ubuntu PostgreSQL 17 集成检查，尚未实际运行。公网部署是后续独立事项，见 [deploy/README.md](../deploy/README.md)。
 
-真实模型闭环验收脚本为 `scripts/smoke-closed-loop.py`，分 `--stage m5`、`--stage feedback`、`--stage publish` 执行，会创建虚构订单并消耗MiMo额度；已有本机验收记录时优先查看报告和负责人历史订单，不需为演示反复付费重跑。`var/local-acceptance.json`保存用于本机验收恢复的私有访问链接，不得对外分享。
+真实模型闭环验收脚本为 `scripts/smoke-closed-loop.py`，分 `--stage m5`、`--stage feedback`、`--stage publish` 执行，会创建虚构订单并消耗MiMo额度；已有本机验收记录时优先查看报告和负责人历史订单，不需为演示反复付费重跑。`var/local-acceptance.json`保存用于本机验收恢复的订单链接，不得对外分享。旧单清空后需从 `--stage m5` 重新开始。
+
+卖家现在需要先注册/登录，订单从顶部“我的订单”找回。完整手工步骤见 `USER_TEST_GUIDE.md`。本机旧订单已按要求清空；注册需要邮箱验证码，发件配置及真实模型测试卖家配置见 `EMAIL_SETUP.md`；当前未实现忘记密码。

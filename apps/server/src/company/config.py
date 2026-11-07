@@ -46,8 +46,18 @@ class Settings(BaseSettings):
     seller_session_hours: int = Field(default=168, ge=1, le=720)
     owner_session_hours: int = Field(default=12, ge=1, le=168)
     order_link_days: int = Field(default=30, ge=1, le=365)
+    mail_mode: Literal["smtp", "test"] = "smtp"
+    smtp_host: str = "smtp.qq.com"
+    smtp_port: int = Field(default=465, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: SecretStr | None = None
+    smtp_from_email: str = ""
+    smtp_timeout_seconds: int = Field(default=12, ge=1, le=30)
+    mail_test_dir: Path | None = None
 
-    @field_validator("mimo_api_key", "session_secret", "admin_password_hash", mode="before")
+    @field_validator(
+        "mimo_api_key", "session_secret", "admin_password_hash", "smtp_password", mode="before"
+    )
     @classmethod
     def blank_secret_is_unconfigured(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
@@ -74,6 +84,8 @@ class Settings(BaseSettings):
     def fake_model_requires_test_environment(self) -> "Settings":
         if self.mimo_mode == "fake" and self.app_env != "test":
             raise ValueError("MIMO_MODE=fake is allowed only with APP_ENV=test")
+        if self.mail_mode == "test" and self.app_env != "test":
+            raise ValueError("MAIL_MODE=test is allowed only with APP_ENV=test")
         return self
 
 

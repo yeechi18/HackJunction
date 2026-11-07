@@ -3,9 +3,12 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from company import __version__
 from company.api.access import router as access_router
+from company.api.accounts import router as accounts_router
 from company.api.assets import router as assets_router
 from company.api.auth import router as auth_router
 from company.api.deliverables import router as deliverables_router
@@ -38,9 +41,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     application.state.settings = configuration
+
+    @application.exception_handler(RequestValidationError)
+    async def safe_validation_error(request, error):
+        # Validation errors must not echo submitted passwords, link tokens or other input values.
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": [
+                    {"loc": item["loc"], "msg": item["msg"], "type": item["type"]}
+                    for item in error.errors()
+                ]
+            },
+        )
+
     application.include_router(health_router, prefix="/api/v1")
     for router in (
         access_router,
+        accounts_router,
         auth_router,
         internal_router,
         orders_router,

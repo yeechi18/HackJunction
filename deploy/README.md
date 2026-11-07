@@ -20,9 +20,9 @@ node scripts/public-demo.mjs
 
 脚本自动迁移独立库、构建独立前端并启动API、worker与隧道；不会修改 `.env`。公网入口3300、web3200、API8200都只监听本机，由出站隧道提供HTTPS。端口被占用时直接停止启动，不结束已有服务。开发版3000/8000及其数据不受影响。
 
-启动成功后，地址写入 `var/public-demo/state.json`，随机入口账号密码写入 `var/public-access.txt`；负责人仍使用 `var/local-admin.txt` 的独立账号。只把入口密码给参加演示的人，不分享负责人密码、密钥或整个运行目录。公网入口密码不代替订单私有授权或负责人登录。
+启动成功后，地址写入 `var/public-demo/state.json`，随机入口账号密码写入 `var/public-access.txt`；负责人仍使用 `var/local-admin.txt` 的独立账号。只把入口密码给参加演示的人，不分享负责人密码、密钥或整个运行目录。公网入口密码不代替卖家账号或负责人登录。卖家先在公网版注册，账号及订单与本机开发库独立。
 
-保持终端与电脑运行，Ctrl+C只停止这套公网演示。重启会得到新地址、入口密码和会话密钥，旧会话需要重新登录，旧私有订单链接中的域名需要换为新域名。演示库和资产会保留；该入口不是长期托管服务。[Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)仅用于临时测试。
+保持终端与电脑运行，Ctrl+C只停止这套公网演示。重启会得到新地址、入口密码和会话密钥，旧会话需要重新登录，卖家可用原公网卖家账号重新登录，从“我的订单”打开订单。演示库和资产会保留；该入口不是长期托管服务。[Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)仅用于临时测试。
 
 当前网络实测HTTP/2边缘连接曾中断，自动QUIC连接也有超时。若默认路线无法连接，可在Windows/macOS上统一使用 `node scripts/public-demo.mjs --us` 尝试美国边缘路线。脚本会先验证公网密码入口，再报告启动完成；仅取得域名不算公网可用。线路断开时可能显示1033，不能将本机服务仍在运行当作公网始终在线。
 

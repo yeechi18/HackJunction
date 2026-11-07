@@ -1,6 +1,8 @@
+import { registerSeller } from "./seller-account";
 import { expect, test } from "@playwright/test";
 
 async function fillOrder(page: import("@playwright/test").Page) {
+  await registerSeller(page.request);
   await page.goto("/orders/new");
   await page.getByLabel(/你的称呼/).fill("建单验收虚构卖家");
   await page.getByLabel(/中文商品名/).fill(`虚构参考图理线夹 ${Date.now()}`);
@@ -18,15 +20,17 @@ test("旧版Safari在无JavaScript时仍显示兼容性提示", async ({ browser
   } finally { await context.close(); }
 });
 
-test("脚本未加载时不允许填写或提交建单表单", async ({ browser, baseURL }) => {
+test("脚本未加载时提示启用脚本且不渲染建单表单", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, javaScriptEnabled: false, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15" });
   try {
     const page = await context.newPage();
     await page.goto("/orders/new");
-    await expect(page.getByText(/正在加载表单交互/)).toBeVisible();
-    await expect(page.getByLabel(/你的称呼/)).toBeDisabled();
-    await expect(page.getByRole("button", { name: /保存资料，创建订单/ })).toBeDisabled();
-    await expect(page.locator("form.intake-form")).toHaveAttribute("method", "post");
+    await expect(page.getByText(/请确保已启用 JavaScript/)).toBeVisible();
+    await expect(page.locator("form.intake-form")).toHaveCount(0);
+    await page.goto("/seller/register");
+    await expect(page.getByLabel("邮箱", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /验证邮箱并注册/ })).toBeDisabled();
+    await expect(page.locator("form.login-form")).toHaveAttribute("method", "post");
   } finally { await context.close(); }
 });
 

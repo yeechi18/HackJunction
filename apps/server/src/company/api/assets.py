@@ -13,10 +13,10 @@ from company.schemas.assets import AssetList, AssetView
 from company.services import assets
 from company.services.access import (
     OWNER_COOKIE,
-    SELLER_COOKIE,
     check_csrf,
     check_origin,
     get_session,
+    seller_order_session,
 )
 from company.services.orders import load_order
 
@@ -37,9 +37,8 @@ async def _write_access(request: Request, database: DB, settings: Configuration,
             if error.status_code not in {401, 403}:
                 raise
             owner_error = error
-    seller_token = request.cookies.get(SELLER_COOKIE)
     try:
-        await get_session(database, seller_token, "seller", order_id)
+        seller_token, _ = await seller_order_session(request, database, order_id)
         check_csrf(request, settings, seller_token)
         return "seller"
     except HTTPException:

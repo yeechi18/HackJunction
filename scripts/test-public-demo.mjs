@@ -141,10 +141,18 @@ try {
     assert.equal((await owner.get('/api/v1/internal/orders')).status(), 200);
   });
 
+  await check('verified_seller_login_uses_secure_cookie', async () => {
+    const sellerCredentials = credentials(await readFile(path.join(root, 'var/public-test-seller.txt'), 'utf8'));
+    const response = await seller.post('/api/v1/seller/auth/login', { data: sellerCredentials });
+    assert.equal(response.status(), 200);
+    sellerCsrf = (await response.json()).csrf_token;
+    await secureCookie(seller, 'account_session');
+  });
+
   let orderId;
   let linkToken;
   await check('fictional_intake_private_link_uses_the_public_origin', async () => {
-    const response = await seller.post('/api/v1/orders', { data: {
+    const response = await seller.post('/api/v1/orders', { headers: { 'X-CSRF-Token': sellerCsrf }, data: {
       seller_name: '公网权限验收虚构卖家',
       product_name: `Fictional HTTPS Desk Cable Clips ${Date.now()}`,
       is_demo: true,
@@ -171,7 +179,7 @@ try {
     assert.equal(response.status(), 200);
     sellerCsrf = (await response.json()).csrf_token;
     assert.equal(typeof sellerCsrf, 'string');
-    await secureCookie(seller, 'seller_session');
+    await secureCookie(seller, 'account_session');
     const order = await seller.get(`/api/v1/orders/${orderId}`);
     assert.equal(order.status(), 200);
     assert.equal((await order.json()).id, orderId);
@@ -231,6 +239,6 @@ try {
   process.exitCode = 1;
 } finally {
   if (ownerCsrf) await owner.post('/api/v1/internal/auth/logout', { headers: { 'X-CSRF-Token': ownerCsrf }, timeout: 10000 }).catch(() => {});
-  if (sellerCsrf) await seller.post('/api/v1/order-access/logout', { headers: { 'X-CSRF-Token': sellerCsrf }, timeout: 10000 }).catch(() => {});
+  if (sellerCsrf) await seller.post('/api/v1/seller/auth/logout', { headers: { 'X-CSRF-Token': sellerCsrf }, timeout: 10000 }).catch(() => {});
   for (const client of contexts) await client.dispose();
 }

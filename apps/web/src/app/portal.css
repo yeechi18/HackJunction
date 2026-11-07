@@ -2,7 +2,15 @@
 .portal { min-height:100svh; display:flex; flex-direction:column; }
 .portal-header { border-bottom:1px solid var(--line); }
 .portal-header-inner { min-height:94px; display:flex; align-items:center; justify-content:space-between; gap:25px; }
-.portal-header nav { display:flex; align-items:center; gap:30px; font-size:12px; color:#758067; }
+.portal-header nav { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:10px 30px; font-size:12px; color:#758067; }
+.account-actions { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin:24px 0; }
+.account-order-list { padding:24px; }
+.account-order-list>p { font-size:12px; color:#7c8c6d; margin-bottom:14px; }
+.account-order { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px; padding:22px 0; border-top:1px solid var(--line); }
+.account-order div { min-width:0; }
+.account-order strong { font-size:15px; color:#526942; overflow-wrap:anywhere; }
+.account-order p { font-size:11px; color:#8b957d; margin-top:9px; line-height:1.8; }
+.account-order>span { font-size:12px; color:#7a8e65; }
 .portal-header nav a:hover { color:var(--orange); }
 .portal-main { flex:1; padding-top:48px; padding-bottom:60px; }
 .portal-footer { padding-top:24px; padding-bottom:26px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:20px; font-size:10px; color:#929c83; }
@@ -415,3 +423,6 @@
   .agent-result-details pre { font-size:9px; padding:10px; }
 }
 @media(prefers-reduced-motion:reduce) { .loading-mark { animation:none; } }
+.verification-row { display:flex; align-items:center; gap:10px; min-width:0; }
+.verification-row input { flex:1; width:0; min-width:0; }
+.verification-row .button { flex-shrink:0; padding-left:14px; padding-right:14px; white-space:nowrap; }

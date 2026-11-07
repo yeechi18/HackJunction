@@ -151,6 +151,8 @@ try {
     await symlink(path.join(webSource, 'node_modules'), path.join(isolatedWeb, 'node_modules'), windows ? 'junction' : 'dir');
     const environment = {
       ...testEnvironment, DATABASE_URL: configuration.test_url, TEST_DATABASE_URL: configuration.test_url,
+      MAIL_MODE: 'test', SMTP_PASSWORD: '', MAIL_TEST_DIR: path.join(temporary, 'mail'),
+      E2E_MAIL_DIR: path.join(temporary, 'mail'),
       PUBLIC_APP_URL: 'http://127.0.0.1:3100', API_ORIGIN: 'http://127.0.0.1:8100',
       E2E_BASE_URL: 'http://127.0.0.1:3100', E2E_OWNER_PASSWORD: password,
       E2E_REFERENCE_IMAGE: path.join(root, 'fixtures/demo/reference.png'),

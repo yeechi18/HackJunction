@@ -9,5 +9,5 @@ export function LoadingPanel({ message = "正在读取最新资料…" }: { mess
 }
 
 export function AccessError({ internal = false, message }: { internal?: boolean; message?: string }) {
-  return <div className="empty-panel access-panel"><span className="eyebrow">PRIVATE WORKSPACE</span><h2>{internal ? "请先登录工作台" : "暂时无法打开这份订单"}</h2><p>{message ?? (internal ? "内部订单仅对已登录的负责人开放。" : "请使用创建订单后获得的完整私有链接；链接或会话可能已失效。")}</p><Link className="button button-dark" href={internal ? "/internal/login" : "/orders/new"}>{internal ? "前往登录" : "提交新的商品资料"}<span aria-hidden="true">↗</span></Link></div>;
+  return <div className="empty-panel access-panel"><span className="eyebrow">PRIVATE WORKSPACE</span><h2>{internal ? "请先登录工作台" : "暂时无法打开这份订单"}</h2><p>{message ?? (internal ? "内部订单仅对已登录的负责人开放。" : "请登录创建此订单的卖家账号，再从“我的订单”打开；其他账号不能查看此订单。")}</p><Link className="button button-dark" href={internal ? "/internal/login" : "/seller/login"}>前往登录<span aria-hidden="true">↗</span></Link></div>;
 }

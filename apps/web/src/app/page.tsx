@@ -21,7 +21,7 @@ const workflow = [
 export default function HomePage() {
   return <>
     <a className="skip-link" href="#main">跳到主要内容</a>
-    <header className="site-header"><div className="container header-inner"><Brand /><nav aria-label="主要导航"><a href="#service">服务内容</a><a href="#process">协作流程</a><a href="#example">演示样例 <span aria-hidden="true">↗</span></a></nav><span className="preview-badge"><span aria-hidden="true" />资料受理预览</span></div></header>
+    <header className="site-header"><div className="container header-inner"><Brand /><nav aria-label="主要导航"><a href="#service">服务内容</a><Link href="/seller/orders">我的订单</Link><Link href="/seller/login">卖家登录 <span aria-hidden="true">↗</span></Link></nav><span className="preview-badge"><span aria-hidden="true" />资料受理预览</span></div></header>
     <main id="main">
       <section className="hero container" aria-labelledby="hero-title">
         <div className="hero-content"><div className="hero-kicker"><span className="tiny-square" />FOR SMALL SELLERS, BIG IDEAS.</div><h1 id="hero-title">让好商品，<br />说好<span className="hero-word">英语<svg viewBox="0 0 200 17" aria-hidden="true"><path d="M4 12C58 2 120 4 194 8" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg></span>。</h1><p className="hero-description">你的产品，值得被世界读懂。<br />为跨境小卖家打造面向 Amazon 美国站的<br className="desktop-break" />商品文案与图片本地化上架包。</p><div className="hero-actions"><Link className="button button-dark" href="/orders/new">提交商品资料 <span aria-hidden="true">↗</span></Link><a className="button button-quiet" href="#example">查看演示样例 <span aria-hidden="true">→</span></a></div><div className="hero-scope"><span>AMAZON US</span><i /><span>美式英语</span><i /><span>单 SKU</span></div></div>
