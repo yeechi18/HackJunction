@@ -1,11 +1,14 @@
+from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select
 
+from company.agents.intake_chat import IntakeChatInput, IntakeChatResult, collect_intake
 from company.api.dependencies import DB, Configuration
 from company.persistence.models import Message, OrderEvent
+from company.providers.mimo import ProviderError
 from company.schemas.orders import (
     CreatedOrder,
     CreateOrder,
@@ -56,6 +59,25 @@ async def create(
 ) -> CreatedOrder:
     check_origin(request, settings)
     return await orders.create_order(database, settings, body)
+
+
+@router.post("/intake-chat", response_model=IntakeChatResult)
+async def intake_chat(
+    body: IntakeChatInput, request: Request, settings: Configuration
+) -> IntakeChatResult:
+    check_origin(request, settings)
+    # This endpoint precedes order creation, so the per-order model budget cannot apply.
+    attempts = request.app.state.intake_chat_attempts
+    now = monotonic()
+    while attempts and attempts[0] <= now - 60:
+        attempts.popleft()
+    if len(attempts) >= 20:
+        raise HTTPException(status_code=429, detail="Intake chat is busy.")
+    attempts.append(now)
+    try:
+        return await collect_intake(body, settings)
+    except ProviderError:
+        raise HTTPException(status_code=503, detail="Intake assistant is unavailable.") from None
 
 
 @router.get("/{order_id}", response_model=OrderSummary)

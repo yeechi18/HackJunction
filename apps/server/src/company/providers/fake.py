@@ -280,6 +280,11 @@ class FakeProvider:
                 "questions": [],
                 "summary": "离线测试已读取当前资料，程序仍负责缺项与事实确认校验。",
             }
+        elif name == "IntakeDraft":
+            answer = {
+                "reply": "当前是离线测试模式。请在资料卡补充并核对商品资料。",
+                "updates": {},
+            }
         elif name == "ResearchDraft":
             answer = research_fixture(context)
         elif name == "ListingDraft":

@@ -403,6 +403,47 @@
         }
       }
     },
+    "/api/v1/orders/intake-chat": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Intake Chat",
+        "operationId": "intake_chat_api_v1_orders_intake_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeChatInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeChatResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/orders/{order_id}": {
       "get": {
         "tags": [
@@ -3010,6 +3051,153 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IntakeChatInput": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "last_reply": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Last Reply",
+            "default": ""
+          },
+          "previous_source_url": {
+            "type": "string",
+            "maxLength": 1500,
+            "title": "Previous Source Url",
+            "default": ""
+          },
+          "fields": {
+            "$ref": "#/components/schemas/IntakeFields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "message",
+          "fields"
+        ],
+        "title": "IntakeChatInput"
+      },
+      "IntakeChatResult": {
+        "properties": {
+          "reply": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reply"
+          },
+          "updates": {
+            "$ref": "#/components/schemas/IntakeFields"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "import_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reply",
+          "updates"
+        ],
+        "title": "IntakeChatResult"
+      },
+      "IntakeFields": {
+        "properties": {
+          "seller_name": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Seller Name",
+            "default": ""
+          },
+          "contact": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Contact",
+            "default": ""
+          },
+          "product_name": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Product Name",
+            "default": ""
+          },
+          "material": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Material",
+            "default": ""
+          },
+          "dimensions": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Dimensions",
+            "default": ""
+          },
+          "pack_quantity": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Pack Quantity",
+            "default": ""
+          },
+          "use_cases": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Use Cases",
+            "default": ""
+          },
+          "dimension_scope": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Dimension Scope",
+            "default": ""
+          },
+          "cable_diameter": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Cable Diameter",
+            "default": ""
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Color",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000,
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntakeFields"
       },
       "InternalOrder": {
         "properties": {

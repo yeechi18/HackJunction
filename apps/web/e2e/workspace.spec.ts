@@ -11,15 +11,13 @@ test("登录表单在脚本未加载时禁止提交密码", async ({ browser, ba
   } finally { await isolated.close(); }
 });
 
-test("首页与状态页可访问，移动端能进入商品资料表单", async ({ page }) => {
+test("首页与状态页可访问，移动端能进入上架对话", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("说好英语");
-  await expect(page.getByText("虚构演示样例", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("link", { name: /提交商品资料/ }).click();
+  await page.getByRole("link", { name: /选择此服务，开始上架/ }).click();
   await expect(page).toHaveURL(/\/orders\/new$/);
   await expect(page.getByLabel(/你的称呼/)).toBeVisible();
-  await expect(page.getByRole("button", { name: /保存资料，创建订单/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /确认资料，提交接单申请/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.goto("/system");
   await expect(page.getByRole("heading", { name: /基础服务状态/ })).toBeVisible();
@@ -31,11 +29,23 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   const productName = `Playwright 虚构理线夹 ${suffix}`;
   await page.goto("/orders/new");
   await page.getByLabel(/你的称呼/).fill("Playwright 演示卖家");
-  await page.getByLabel(/中文商品名/).fill(productName);
-  await page.getByLabel(/^材质/).fill("硅胶");
-  await page.getByRole("checkbox", { name: "我已核实" }).first().check();
+  await page.route("**/api/v1/orders/intake-chat", route => route.fulfill({
+    json: {
+      reply: "已整理商品名和材质。",
+      updates: { product_name: productName, material: "硅胶" },
+      source_url: "https://item.taobao.com/item.htm?id=123",
+      import_notice: null,
+    },
+  }));
+  await page.getByLabel("发给上架顾问").fill("https://item.taobao.com/item.htm?id=123");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(page.getByLabel(/中文商品名/)).toHaveValue(productName);
+  await expect(page.getByLabel(/^材质/)).toHaveValue("硅胶");
+  await expect(page.getByLabel(/^尺寸/)).toHaveValue("");
+  await page.getByRole("checkbox", { name: "我已核对已填写的商品资料" }).check();
+  await page.getByText("其他资料（选填）", { exact: true }).click();
   await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
-  await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
+  await page.getByRole("button", { name: /确认资料，提交接单申请/ }).click();
   await expect(page.getByRole("heading", { name: /资料已保存/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   const privateUrl = new URL(await page.getByLabel("私有订单链接").inputValue());

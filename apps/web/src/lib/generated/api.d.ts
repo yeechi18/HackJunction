@@ -208,6 +208,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/intake-chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Intake Chat */
+        post: operations["intake_chat_api_v1_orders_intake_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{order_id}": {
         parameters: {
             query?: never;
@@ -1145,6 +1162,90 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntakeChatInput */
+        IntakeChatInput: {
+            /** Message */
+            message: string;
+            /**
+             * Last Reply
+             * @default
+             */
+            last_reply: string;
+            /**
+             * Previous Source Url
+             * @default
+             */
+            previous_source_url: string;
+            fields: components["schemas"]["IntakeFields"];
+        };
+        /** IntakeChatResult */
+        IntakeChatResult: {
+            /** Reply */
+            reply: string;
+            updates: components["schemas"]["IntakeFields"];
+            /** Source Url */
+            source_url?: string | null;
+            /** Import Notice */
+            import_notice?: string | null;
+        };
+        /** IntakeFields */
+        IntakeFields: {
+            /**
+             * Seller Name
+             * @default
+             */
+            seller_name: string;
+            /**
+             * Contact
+             * @default
+             */
+            contact: string;
+            /**
+             * Product Name
+             * @default
+             */
+            product_name: string;
+            /**
+             * Material
+             * @default
+             */
+            material: string;
+            /**
+             * Dimensions
+             * @default
+             */
+            dimensions: string;
+            /**
+             * Pack Quantity
+             * @default
+             */
+            pack_quantity: string;
+            /**
+             * Use Cases
+             * @default
+             */
+            use_cases: string;
+            /**
+             * Dimension Scope
+             * @default
+             */
+            dimension_scope: string;
+            /**
+             * Cable Diameter
+             * @default
+             */
+            cable_diameter: string;
+            /**
+             * Color
+             * @default
+             */
+            color: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
         };
         /** InternalOrder */
         InternalOrder: {
@@ -2119,6 +2220,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedOrder"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_chat_api_v1_orders_intake_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeChatInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeChatResult"];
                 };
             };
             /** @description Validation Error */
