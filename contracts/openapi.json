@@ -617,7 +617,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateOrder"
+                "$ref": "#/components/schemas/SubmitOrder"
               }
             }
           },
@@ -2756,66 +2756,6 @@
         ],
         "title": "ConfirmationView"
       },
-      "CreateOrder": {
-        "properties": {
-          "seller_name": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Seller Name"
-          },
-          "contact": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contact"
-          },
-          "product_name": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Product Name"
-          },
-          "facts": {
-            "items": {
-              "$ref": "#/components/schemas/ProductFact"
-            },
-            "type": "array",
-            "maxItems": 100,
-            "title": "Facts"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 10000
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "seller_name",
-          "product_name"
-        ],
-        "title": "CreateOrder"
-      },
       "CreatedOrder": {
         "properties": {
           "id": {
@@ -3543,6 +3483,28 @@
             "type": "string",
             "title": "Product Name"
           },
+          "product_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Details"
+          },
+          "domestic_product_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domestic Product Url"
+          },
           "facts": {
             "items": {
               "$ref": "#/components/schemas/ProductFact"
@@ -3972,6 +3934,28 @@
           "product_name": {
             "type": "string",
             "title": "Product Name"
+          },
+          "product_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Details"
+          },
+          "domestic_product_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domestic Product Url"
           },
           "facts": {
             "items": {
@@ -4732,6 +4716,72 @@
           "created_at"
         ],
         "title": "SnapshotView"
+      },
+      "SubmitOrder": {
+        "properties": {
+          "product_name": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Product Name"
+          },
+          "product_details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Details"
+          },
+          "domestic_product_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domestic Product Url"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFact"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Facts"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_name"
+        ],
+        "title": "SubmitOrder"
       },
       "SupplementInput": {
         "properties": {

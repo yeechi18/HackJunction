@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select
 
 from company.api.dependencies import DB, Configuration
-from company.persistence.models import Message, OrderEvent
+from company.persistence.models import Message, OrderEvent, SellerAccount
 from company.schemas.orders import (
     CreatedOrder,
     CreateOrder,
@@ -15,6 +15,7 @@ from company.schemas.orders import (
     MessageList,
     MessageView,
     OrderSummary,
+    SubmitOrder,
     SupplementInput,
 )
 from company.services import orders
@@ -52,7 +53,7 @@ async def seller_write(
 
 @router.post("", response_model=CreatedOrder, status_code=201)
 async def create(
-    body: CreateOrder, request: Request, database: DB, settings: Configuration
+    body: SubmitOrder, request: Request, database: DB, settings: Configuration
 ) -> CreatedOrder:
     check_origin(request, settings)
     token = request.cookies.get(ACCOUNT_COOKIE)
@@ -60,7 +61,13 @@ async def create(
     if session.account_id is None:
         raise HTTPException(401, "Seller sign-in is required.")
     check_csrf(request, settings, token)
-    return await orders.create_order(database, settings, body, seller_account_id=session.account_id)
+    account = await database.get(SellerAccount, session.account_id)
+    if account is None:
+        raise HTTPException(401, "Seller account is unavailable.")
+    creation = CreateOrder(
+        **body.model_dump(), seller_name=account.display_name, contact=account.email
+    )
+    return await orders.create_order(database, settings, creation, seller_account_id=account.id)
 
 
 @router.get("/{order_id}", response_model=OrderSummary)

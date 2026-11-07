@@ -1010,24 +1010,6 @@ export interface components {
              */
             confirmed_at: string;
         };
-        /** CreateOrder */
-        CreateOrder: {
-            /** Seller Name */
-            seller_name: string;
-            /** Contact */
-            contact?: string | null;
-            /** Product Name */
-            product_name: string;
-            /** Facts */
-            facts?: components["schemas"]["ProductFact"][];
-            /** Notes */
-            notes?: string | null;
-            /**
-             * Is Demo
-             * @default false
-             */
-            is_demo: boolean;
-        };
         /** CreatedOrder */
         CreatedOrder: {
             /**
@@ -1370,6 +1352,10 @@ export interface components {
             seller_name: string;
             /** Product Name */
             product_name: string;
+            /** Product Details */
+            product_details?: string | null;
+            /** Domestic Product Url */
+            domestic_product_url?: string | null;
             /** Facts */
             facts: components["schemas"]["ProductFact"][];
             /** Notes */
@@ -1548,6 +1534,10 @@ export interface components {
             seller_name: string;
             /** Product Name */
             product_name: string;
+            /** Product Details */
+            product_details?: string | null;
+            /** Domestic Product Url */
+            domestic_product_url?: string | null;
             /** Facts */
             facts: components["schemas"]["ProductFact"][];
             /** Notes */
@@ -1892,6 +1882,24 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** SubmitOrder */
+        SubmitOrder: {
+            /** Product Name */
+            product_name: string;
+            /** Product Details */
+            product_details?: string | null;
+            /** Domestic Product Url */
+            domestic_product_url?: string | null;
+            /** Facts */
+            facts?: components["schemas"]["ProductFact"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Is Demo
+             * @default false
+             */
+            is_demo: boolean;
         };
         /** SupplementInput */
         SupplementInput: {
@@ -2507,7 +2515,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateOrder"];
+                "application/json": components["schemas"]["SubmitOrder"];
             };
         };
         responses: {

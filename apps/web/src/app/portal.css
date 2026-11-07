@@ -426,3 +426,5 @@
 .verification-row { display:flex; align-items:center; gap:10px; min-width:0; }
 .verification-row input { flex:1; width:0; min-width:0; }
 .verification-row .button { flex-shrink:0; padding-left:14px; padding-right:14px; white-space:nowrap; }
+
+.product-source-link { overflow-wrap:anywhere; font-size:12px; line-height:1.8; }

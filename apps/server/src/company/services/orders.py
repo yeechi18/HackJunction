@@ -156,6 +156,8 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         revision=order.revision,
         seller_name=order.seller_name,
         product_name=order.product_name,
+        product_details=order.product_details,
+        domestic_product_url=order.domestic_product_url,
         facts=snapshot.facts,
         notes=snapshot.notes,
         is_demo=order.is_demo,
@@ -260,6 +262,8 @@ async def create_order(
         seller_account_id=seller_account_id,
         contact=body.contact,
         product_name=body.product_name,
+        product_details=body.product_details,
+        domestic_product_url=body.domestic_product_url,
         is_demo=body.is_demo,
         publish_mode=settings.publish_mode,
     )

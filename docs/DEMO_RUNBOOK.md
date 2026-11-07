@@ -4,6 +4,12 @@
 
 实际已通过的阶段与报告见 [PROGRESS.md](PROGRESS.md)。Windows 和 GitHub CI 尚未执行验证；提供兼容代码与 CI 文件，不等于这些平台已经实测通过。
 
+## 更新已有项目
+
+本轮当前数据库版本为 `0011_product_intake`。从旧提交更新后，停止API和worker，执行 `uv run --project apps/server company-db-init`，再按README启动；生产前端需重新构建。迁移保留账号和订单。本机已完成，日常重启无需再迁移。登录成功后列表报`product_details`字段不存在时，应先检查这一步。
+
+当前建单为商品名、商品明细、可选国内链接、商品图及补充说明/期望卖点五项，商家信息由账号自动关联。商品链接仅保存，属性在订单内继续核实。负责人账号和密码在`var/local-admin.txt`，密码框只填`password=`右侧值。完整操作见[用户验收指南](USER_TEST_GUIDE.md)。
+
 ## 首次准备与启动
 
 准备 Node.js 22、uv、Python 3.11 和原生 PostgreSQL 17 Server。在项目根目录执行：

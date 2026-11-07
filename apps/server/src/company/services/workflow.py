@@ -271,6 +271,8 @@ class WorkflowContext:
             )
             order_input = {
                 "product_name": order.product_name,
+                "product_details": order.product_details,
+                "domestic_product_url": order.domestic_product_url,
                 "facts": [{**fact, "key": canonical_key(fact["key"])} for fact in snapshot.facts],
                 "notes": snapshot.notes,
                 "is_demo": order.is_demo,

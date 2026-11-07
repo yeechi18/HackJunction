@@ -6,9 +6,9 @@ test("获客聊天显示处理反馈，人工接管暂停，负责人结束后�
   await registerSeller(seller.request);
   await seller.goto("/orders/new");
   await expect(seller.getByRole("link", { name: /负责人入口/ })).toHaveAttribute("href", "/internal/login");
-  await seller.getByLabel(/你的称呼/).fill("聊天验收虚构卖家");
+  await seller.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
   const name = `虚构聊天理线夹 ${Date.now()}`;
-  await seller.getByLabel(/中文商品名/).fill(name);
+  await seller.getByLabel(/商品名字/).fill(name);
   await seller.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await seller.getByRole("button", { name: /保存资料，创建订单/ }).click();
   const url = new URL(await seller.getByLabel("私有订单链接").inputValue());

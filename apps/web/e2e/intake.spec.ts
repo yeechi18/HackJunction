@@ -1,11 +1,12 @@
+import { readFile } from "node:fs/promises";
 import { registerSeller } from "./seller-account";
 import { expect, test } from "@playwright/test";
 
 async function fillOrder(page: import("@playwright/test").Page) {
   await registerSeller(page.request);
   await page.goto("/orders/new");
-  await page.getByLabel(/你的称呼/).fill("建单验收虚构卖家");
-  await page.getByLabel(/中文商品名/).fill(`虚构参考图理线夹 ${Date.now()}`);
+  await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
+  await page.getByLabel(/商品名字/).fill(`虚构参考图理线夹 ${Date.now()}`);
   await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
 }
 
@@ -34,18 +35,15 @@ test("脚本未加载时提示启用脚本且不渲染建单表单", async ({ br
   } finally { await context.close(); }
 });
 
-test("核实勾选随事实变化重置，建单时上传图片并保留私有访问", async ({ page }) => {
+test("五项建单表单自动关联账号、保存商品明细与链接并上传参考图", async ({ page }) => {
   test.skip(!process.env.E2E_REFERENCE_IMAGE, "需要隔离测试栈提供演示参考图");
   await fillOrder(page);
-  const material = page.getByLabel(/^材质/);
-  const confirmed = page.getByRole("checkbox", { name: "我已核实" }).first();
-  await expect(confirmed).toBeDisabled();
-  await material.fill("硅胶");
-  await confirmed.check();
-  await expect(confirmed).toBeChecked();
-  await material.fill("silicone");
-  await expect(confirmed).not.toBeChecked();
-  await confirmed.check();
+  await expect(page.getByLabel(/你的称呼/)).toHaveCount(0);
+  await expect(page.getByLabel(/联系方式/)).toHaveCount(0);
+  await expect(page.locator(".form-section")).toHaveCount(2);
+  await expect(page.locator(".intake-form input:not([type=checkbox]), .intake-form textarea")).toHaveCount(5);
+  await page.getByLabel(/国内平台商品链接/).fill("https://item.jd.com/100000000000.html");
+  await page.getByLabel(/补充商品说明与期望卖点/).fill("希望重点说明桌面收纳用途，不添加未经证实的承诺。");
   await page.getByLabel("商品参考图", { exact: false }).setInputFiles(process.env.E2E_REFERENCE_IMAGE!);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -57,7 +55,9 @@ test("核实勾选随事实变化重置，建单时上传图片并保留私有�
   expect(url.hash).toMatch(/^#token=/);
   await page.getByRole("link", { name: /查看订单进度/ }).click();
   await expect(page).toHaveURL(current => current.pathname === url.pathname && !current.hash);
-  await expect(page.getByText("卖家已核实", { exact: true })).toBeVisible();
+  await expect(page.getByText("黑色硅胶理线夹，适合整理桌面线缆。", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "https://item.jd.com/100000000000.html" })).toHaveAttribute("href", "https://item.jd.com/100000000000.html");
+  await expect(page.getByText("希望重点说明桌面收纳用途，不添加未经证实的承诺。", { exact: true })).toBeVisible();
   const reference = page.locator("article").filter({ has: page.getByRole("heading", { name: "商品参考图", exact: true }) });
   await expect(reference).toHaveCount(1);
   await expect(reference.locator("img")).toBeVisible();
@@ -105,4 +105,24 @@ test("图片失败后只重试图片，不重复建单", async ({ page }) => {
   expect(await page.getByLabel("私有订单链接").inputValue()).toBe(link);
   expect(orders).toBe(1);
   expect(uploads).toBe(2);
+});
+
+
+test("商品图可粘贴，空白明细提示错误且不创建订单", async ({ page }) => {
+  test.skip(!process.env.E2E_REFERENCE_IMAGE, "需要演示参考图");
+  await fillOrder(page);
+  const image = await readFile(process.env.E2E_REFERENCE_IMAGE!);
+  await page.getByLabel(/商品明细信息/).evaluate((element, content) => {
+    const bytes = Uint8Array.from(atob(content), value => value.charCodeAt(0));
+    const clipboard = new DataTransfer();
+    clipboard.items.add(new File([bytes], "pasted-reference.png", { type: "image/png" }));
+    element.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+  }, image.toString("base64"));
+  await expect(page.getByText("pasted-reference.png", { exact: true })).toBeVisible();
+  await page.getByLabel(/商品明细信息/).fill("   ");
+  await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
+  await expect(page.locator("form").getByRole("alert")).toContainText("请填写商品名字和已知的商品明细");
+  await page.getByLabel(/商品明细信息/).fill("虚构硅胶理线夹，已知黑色，尺寸待补充。");
+  await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
+  await expect(page.getByText("商品参考图已上传，可在订单中查看。")).toBeVisible();
 });

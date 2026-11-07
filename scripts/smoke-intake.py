@@ -35,7 +35,7 @@ def main():
         login = client.post("/seller/auth/login", json=seller_credentials)
         assert login.status_code == 200, "Verified seller login failed."
         created = client.post("/orders", headers={"X-CSRF-Token": login.json()["csrf_token"]}, json={
-            "seller_name": "M3验收模拟卖家", "product_name": "[M3验收]虚构桌面理线夹",
+            "product_name": "[M3验收]虚构桌面理线夹",
             "facts": FACTS, "is_demo": True,
         })
         assert created.status_code == 201, "Could not create the fictional intake order."

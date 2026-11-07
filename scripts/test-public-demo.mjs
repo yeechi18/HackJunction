@@ -153,7 +153,6 @@ try {
   let linkToken;
   await check('fictional_intake_private_link_uses_the_public_origin', async () => {
     const response = await seller.post('/api/v1/orders', { headers: { 'X-CSRF-Token': sellerCsrf }, data: {
-      seller_name: '公网权限验收虚构卖家',
       product_name: `Fictional HTTPS Desk Cable Clips ${Date.now()}`,
       is_demo: true,
       notes: '虚构公网验收，仅测试缺尺寸获客与访问控制，不批准生产或发布。',

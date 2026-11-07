@@ -121,7 +121,7 @@ def main(stage: str) -> None:
                 "/orders",
                 headers={"X-CSRF-Token": login.json()["csrf_token"]},
                 json={
-                    "seller_name": "闭环验收虚构卖家",
+
                     "product_name": "Fictional Silicone Desk Cable Clips",
                     "facts": FACTS,
                     "is_demo": True,

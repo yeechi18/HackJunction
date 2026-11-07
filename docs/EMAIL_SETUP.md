@@ -27,7 +27,7 @@ uv sync --project apps/server --locked --group dev
 uv run --project apps/server company-db-init
 ```
 
-本机已完成 `0010_registration_email` 迁移及重启；迁移不会删除已有账号或订单。之后访问 `/seller/register` 即可发码。`node scripts/check-env.mjs` 只检查授权码是否存在，真实发码成功才验证 SMTP 登录和提交邮件；SMTP 接受邮件不等于已确认收件箱到达，未看到请检查垃圾邮件和邮箱是否填写正确。
+注册验证码迁移为 `0010_registration_email`，本机当前已升级至含商品明细的 `0011_product_intake`；迁移不会删除已有账号或订单。之后访问 `/seller/register` 即可发码。`node scripts/check-env.mjs` 只检查授权码是否存在，真实发码成功才验证 SMTP 登录和提交邮件；SMTP 接受邮件不等于已确认收件箱到达，未看到请检查垃圾邮件和邮箱是否填写正确。
 
 SMTP 使用 SSL/TLS 并通过 certifi 校验证书，兼容本机 Python 默认信任链缺失的情况。生产环境没有验证码旁路，未配置 SMTP 或发送失败时直接提示失败，验证码不会出现在接口响应或日志里，数据库只保存带密钥摘要。
 

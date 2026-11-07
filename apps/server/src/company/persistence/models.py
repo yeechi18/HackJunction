@@ -56,6 +56,8 @@ class Order(Base):
     seller_name: Mapped[str] = mapped_column(String(200))
     contact: Mapped[str | None] = mapped_column(String(500))
     product_name: Mapped[str] = mapped_column(String(300))
+    product_details: Mapped[str | None] = mapped_column(Text)
+    domestic_product_url: Mapped[str | None] = mapped_column(String(2000))
     phase: Mapped[str] = mapped_column(String(32), default="INTAKE")
     revision: Mapped[int] = mapped_column(Integer, default=1)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)

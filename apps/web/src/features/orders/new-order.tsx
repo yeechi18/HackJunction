@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type ClipboardEvent, type FormEvent } from "react";
 import { ErrorNotice } from "@/components/async-feedback";
 import { apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
-import { emptyFacts, FactEditor, normalizedFacts } from "./fact-editor";
 import { formatBytes, uploadErrorMessage, validateFile } from "./reference-image";
 import type { CreatedOrder, SellerSession } from "./types";
 import styles from "./reference-assets-panel.module.css";
@@ -18,7 +17,6 @@ type SavedOrder = { id: string; url: string; path: string; productName: string }
 export function NewOrderForm() {
   const account = useSellerAccount();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
-  const [facts, setFacts] = useState(emptyFacts);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<SavedOrder | null>(null);
@@ -36,10 +34,21 @@ export function NewOrderForm() {
   useEffect(() => { if (error) notice.current?.focus(); }, [error]);
   useEffect(() => { if (created) success.current?.focus(); }, [created]);
 
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0] ?? null;
+  function selectFile(selected: File | null) {
     setFile(selected);
     setFileError(selected ? validateFile(selected) ?? "" : "");
+  }
+
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    selectFile(event.target.files?.[0] ?? null);
+  }
+
+  function pasteImage(event: ClipboardEvent<HTMLFormElement>) {
+    const image = Array.from(event.clipboardData.files).find(item => item.type.startsWith("image/"));
+    if (!image || busy) return;
+    event.preventDefault();
+    if (fileInput.current) fileInput.current.value = "";
+    selectFile(image);
   }
 
   async function uploadReference(order: SavedOrder, selected: File) {
@@ -67,14 +76,13 @@ export function NewOrderForm() {
     setBusy(true);
     setError("");
     try {
-      const sellerName = String(fields.get("seller_name") ?? "").trim();
       const productName = String(fields.get("product_name") ?? "").trim();
-      if (!sellerName || !productName) { setError("请填写你的称呼和中文商品名，不能只填写空格。"); return; }
+      const productDetails = String(fields.get("product_details") ?? "").trim();
+      if (!productName || !productDetails) { setError("请填写商品名字和已知的商品明细，不能只填写空格。"); return; }
       const body = JSON.stringify({
-        seller_name: sellerName,
-        contact: String(fields.get("contact") ?? "").trim() || null,
         product_name: productName,
-        facts: normalizedFacts(facts),
+        product_details: productDetails,
+        domestic_product_url: String(fields.get("domestic_product_url") ?? "").trim() || null,
         notes: String(fields.get("notes") ?? "").trim() || null,
         is_demo: fields.get("is_demo") === "on",
       });
@@ -119,29 +127,26 @@ export function NewOrderForm() {
   </section>;
 
   return <>
-    <div className="portal-page-heading"><p className="eyebrow">LET’S MEET YOUR PRODUCT.</p><h1>从一件好商品开始<span>.</span></h1><p>告诉我们你正在做的产品，先保存资料，再一起把细节补齐。</p></div>
-    <div className="intake-grid"><form className="surface intake-form" method="post" onSubmit={submit} aria-busy={busy}>
+    <div className="portal-page-heading"><p className="eyebrow">LET’S MEET YOUR PRODUCT.</p><h1>从一件好商品开始<span>.</span></h1><p>只需填写商品资料，商家信息会从当前登录账号自动关联。</p></div>
+    <div className="intake-grid"><form className="surface intake-form" method="post" onSubmit={submit} onPaste={pasteImage} aria-busy={busy}>
       {!hydrated && <p className="form-notice notice-warning" role="status">正在加载表单交互。若长时间无法操作，请刷新页面，并使用 Safari 16.4 或更新版本、Chrome 或 Edge。</p>}
       <noscript><p className="form-notice notice-error">请开启浏览器 JavaScript 后重新打开此页面。</p></noscript>
       {error && <div ref={notice} tabIndex={-1}><ErrorNotice>{error}</ErrorNotice></div>}
       <fieldset className="intake-fields" disabled={!hydrated || busy}>
-        <div className="form-section"><div className="form-section-title"><span>01</span><h2>先认识你和你的商品</h2></div>
-          <div className="form-two-columns"><div className="field"><label htmlFor="seller_name">你的称呼 <em>必填</em></label><input id="seller_name" name="seller_name" required maxLength={200} autoComplete="name" placeholder="我们应该怎么称呼你" /></div><div className="field"><label htmlFor="contact">联系方式 <span>选填</span></label><input id="contact" name="contact" maxLength={500} autoComplete="email" placeholder="邮箱或其他联系方式" /></div></div>
-          <div className="field"><label htmlFor="product_name">中文商品名 <em>必填</em></label><input id="product_name" name="product_name" required maxLength={300} placeholder="例如：桌面理线夹" /></div>
+        <div className="form-section"><div className="form-section-title"><span>01</span><h2>商品名字与明细</h2></div>
+          <div className="field"><label htmlFor="product_name">商品名字 <em>必填</em></label><input id="product_name" name="product_name" required maxLength={300} placeholder="例如：桌面理线夹" /></div>
+          <div className="field"><label htmlFor="product_details">商品明细信息 <em>必填</em></label><textarea id="product_details" name="product_details" rows={5} required maxLength={10000} placeholder="例如：硅胶材质，黑色，6个装，单件4×3×2cm，用于整理桌面线缆。先写已知信息，缺少的内容可之后补充。" /><p className="field-help">把已有参数和使用信息写在一起即可，获客 Agent 会继续核实所需细节。</p></div>
+          <div className="field"><label htmlFor="domestic_product_url">国内平台商品链接 <span>选填</span></label><input id="domestic_product_url" name="domestic_product_url" type="url" maxLength={2000} placeholder="https://…（如淘宝、京东、1688商品页）" /><p className="field-help">保存为商品参考链接，请把希望采用的信息一并写在明细中。</p></div>
         </div>
-        <div className="form-section"><div className="form-section-title"><span>02</span><h2>把你确定的事实告诉我们</h2></div>
-          <p className="field-help">资料不全也可以先提交。填写后请逐项勾选「我已核实」；修改内容后需要重新核实。</p>
-          <FactEditor facts={facts} onChange={setFacts} disabled={!hydrated || busy} />
+        <div className="form-section"><div className="form-section-title"><span>02</span><h2>商品图片与补充说明</h2></div>
           <div className={`${styles.uploadForm} intake-reference`}>
             <label className={styles.fileLabel} htmlFor="intake-reference">商品参考图 <span>选填</span></label>
             <input ref={fileInput} id="intake-reference" className={styles.fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={chooseFile} aria-describedby="intake-reference-help" />
-            <p className={styles.limits} id="intake-reference-help">支持 PNG、JPEG、WebP，单张不超过 10 MiB。保存资料时一并上传，建单后也可继续补充。</p>
+            <p className={styles.limits} id="intake-reference-help">支持选择或复制后粘贴 PNG、JPEG、WebP 图片，单张不超过 10 MiB。保存资料时上传，建单后也可继续补充。</p>
             {file && <div className={styles.selectedFile}><strong>{file.name}</strong><span>{formatBytes(file.size)}</span><button className="text-button" type="button" onClick={() => { setFile(null); setFileError(""); if (fileInput.current) fileInput.current.value = ""; }}>清除选择</button></div>}
             {fileError && <p className={styles.error} role="alert">{fileError}</p>}
           </div>
-        </div>
-        <div className="form-section"><div className="form-section-title"><span>03</span><h2>还有什么想补充的</h2></div>
-          <div className="field"><label htmlFor="notes">商品说明与期望卖点 <span>选填</span></label><textarea id="notes" name="notes" rows={4} maxLength={10000} placeholder="已有文案、希望突出的特点，或需要我们特别注意的地方。" /></div>
+          <div className="field intake-reference"><label htmlFor="notes">补充商品说明与期望卖点 <span>选填</span></label><textarea id="notes" name="notes" rows={4} maxLength={10000} placeholder="已有文案、希望突出的特点，或需要我们特别注意的地方。" /></div>
           <label className="checkbox-field demo-checkbox"><input type="checkbox" name="is_demo" /><span>这是一份虚构演示订单</span></label><p className="field-help">真实商品资料与演示数据分别记录。</p>
         </div>
         <div className="form-submit-row"><p>订单将保存到你的账号，可从“我的订单”找回。</p><button className="button button-dark" disabled={!hydrated || busy} type="submit">{busy ? "正在保存资料…" : "保存资料，创建订单"}<span aria-hidden="true">↗</span></button></div>

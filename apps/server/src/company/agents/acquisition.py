@@ -163,6 +163,8 @@ async def inspect_intake(order_input: dict[str, Any], provider: MiMoProvider) ->
     ready = not missing and not conflicts
     context = {
         "product_name": order_input.get("product_name", ""),
+        "product_details": order_input.get("product_details"),
+        "domestic_product_url": order_input.get("domestic_product_url"),
         "facts": facts,
         "notes": order_input.get("notes"),
         "messages": order_input.get("messages", []),

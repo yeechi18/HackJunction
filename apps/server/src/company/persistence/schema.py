@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, MetaData, String, Table
 
-SCHEMA_VERSION = "registration_email_v1"
-ALEMBIC_REVISION = "0010_registration_email"
+SCHEMA_VERSION = "product_intake_v1"
+ALEMBIC_REVISION = "0011_product_intake"
 metadata = MetaData()
 system_metadata = Table(
     "system_metadata",

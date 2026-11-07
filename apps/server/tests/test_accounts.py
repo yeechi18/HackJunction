@@ -18,7 +18,7 @@ from company.services.access import token_hash
 pytestmark = pytest.mark.integration
 PASSWORD = "Account12!"
 ORDER = {
-    "seller_name": "Account Test",
+    "product_details": "Fictional silicone cable clips, known material only.",
     "product_name": "Fictional clips",
     "facts": [],
     "is_demo": True,
@@ -432,3 +432,45 @@ async def test_concurrent_resend_changes_code_once_and_invalidates_old_code(acco
             "/api/v1/seller/auth/register", json={**body, "verification_code": second}
         )
     ).status_code == 201
+
+
+async def test_account_identity_is_automatic_and_product_input_persists(accounts):
+    settings, app, client, register, owner_login, _ = accounts
+    customer, account = await register()
+    payload = {
+        "product_name": "五项建单测试",
+        "product_details": "硅胶材质，黑色，6个装，单件4×3×2cm。",
+        "domestic_product_url": "https://item.jd.com/100000000000.html",
+        "notes": "希望突出桌面整洁，不夸大防水效果。",
+        "is_demo": True,
+    }
+    response = await customer.post(
+        "/api/v1/orders", json=payload, headers={"X-CSRF-Token": account["csrf_token"]}
+    )
+    assert response.status_code == 201, response.text
+    identifier = response.json()["id"]
+    detail = (await customer.get(f"/api/v1/orders/{identifier}")).json()
+    assert detail["product_details"] == payload["product_details"]
+    assert detail["domestic_product_url"] == payload["domestic_product_url"]
+    assert detail["notes"] == payload["notes"] and detail["facts"] == []
+    owner, _ = await owner_login()
+    internal = (await owner.get(f"/api/v1/internal/orders/{identifier}")).json()
+    assert internal["seller_name"] == account["display_name"]
+    assert internal["contact"] == account["email"]
+    for forged in [{"seller_name": "Different Seller"}, {"contact": "other@example.invalid"}]:
+        rejected = await customer.post(
+            "/api/v1/orders",
+            json={**payload, **forged},
+            headers={"X-CSRF-Token": account["csrf_token"]},
+        )
+        assert rejected.status_code == 422
+    restarted = create_app(settings)
+    async with restarted.router.lifespan_context(restarted):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=restarted),
+            base_url=settings.public_app_url,
+            cookies={"account_session": customer.cookies.get("account_session")},
+        ) as visitor:
+            saved = (await visitor.get(f"/api/v1/orders/{identifier}")).json()
+            assert saved["product_details"] == payload["product_details"]
+            assert saved["domestic_product_url"] == payload["domestic_product_url"]

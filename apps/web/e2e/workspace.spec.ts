@@ -20,7 +20,7 @@ test("首页与状态页可访问，移动端能进入商品资料表单", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("link", { name: /提交商品资料/ }).click();
   await expect(page).toHaveURL(/\/orders\/new$/);
-  await expect(page.getByLabel(/你的称呼/)).toBeVisible();
+  await expect(page.getByLabel(/商品明细信息/)).toBeVisible();
   await expect(page.getByRole("button", { name: /保存资料，创建订单/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.goto("/system");
@@ -33,10 +33,8 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   const productName = `Playwright 虚构理线夹 ${suffix}`;
   await registerSeller(page.request);
   await page.goto("/orders/new");
-  await page.getByLabel(/你的称呼/).fill("Playwright 演示卖家");
-  await page.getByLabel(/中文商品名/).fill(productName);
-  await page.getByLabel(/^材质/).fill("硅胶");
-  await page.getByRole("checkbox", { name: "我已核实" }).first().check();
+  await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
+  await page.getByLabel(/商品名字/).fill(productName);
   await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   await expect(page.getByRole("heading", { name: /资料已保存/ })).toBeVisible();
@@ -48,7 +46,7 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   await expect(page).toHaveURL(url => url.pathname === privateUrl.pathname && !url.hash);
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(productName);
-  await expect(page.getByText("卖家已核实", { exact: true })).toBeVisible();
+  await expect(page.getByText("黑色硅胶理线夹，适合整理桌面线缆。", { exact: true })).toBeVisible();
   await expect(page.getByRole("status", { name: "订单进度", exact: true })).toBeVisible();
   await expect(page.getByRole("status", { name: "订单进度", exact: true })).toHaveAttribute("data-workflow-status", /queued|running|waiting_for_seller|waiting_for_owner|failed/);
 
@@ -94,7 +92,7 @@ test("内部入口要求登录，负责人可查看演示订单并退出", async
   test.skip(!password, "设置 E2E_OWNER_PASSWORD 后验证真实负责人登录；测试不读取或展示本地管理员凭据。");
   const productName = `Playwright 内部演示 ${Date.now()}`;
   const account = await registerSeller(request);
-  const response = await request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: { seller_name: "Playwright 内部演示卖家", product_name: productName, facts: [], is_demo: true } });
+  const response = await request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: { product_name: productName, facts: [], is_demo: true } });
   expect(response.status()).toBe(201);
   await page.goto("/internal/orders");
   await expect(page.getByRole("heading", { name: "请先登录工作台" })).toBeVisible();

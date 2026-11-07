@@ -31,8 +31,8 @@ test("注册账号建单、退出重新登录找回订单，其他卖家不能�
   await page.getByLabel("邮箱验证码", { exact: true }).fill(code);
   await page.getByRole("button", { name: /验证邮箱并注册/ }).click();
   await expect(page).toHaveURL(/\/orders\/new$/);
-  await page.getByLabel(/你的称呼/).fill("虚构账号卖家");
-  await page.getByLabel(/中文商品名/).fill(product);
+  await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶桌面理线夹，参数待核实。");
+  await page.getByLabel(/商品名字/).fill(product);
   await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   await expect(page.getByRole("heading", { name: /资料已保存/ })).toBeVisible();

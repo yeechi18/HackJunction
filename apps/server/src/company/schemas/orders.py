@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from company.domain.facts import canonical_key
 
@@ -22,13 +22,32 @@ class ProductFact(InputModel):
         return canonical_key(value)
 
 
-class CreateOrder(InputModel):
-    seller_name: str = Field(min_length=1, max_length=200)
-    contact: str | None = Field(default=None, max_length=500)
+class SubmitOrder(InputModel):
     product_name: str = Field(min_length=1, max_length=300)
+    product_details: str | None = Field(default=None, min_length=1, max_length=10000)
+    domestic_product_url: str | None = Field(default=None, max_length=2000)
     facts: list[ProductFact] = Field(default_factory=list, max_length=100)
     notes: str | None = Field(default=None, max_length=10000)
     is_demo: bool = False
+
+    @field_validator("domestic_product_url")
+    @classmethod
+    def safe_product_url(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        if any(ord(char) < 33 for char in value):
+            raise ValueError("Supply a valid HTTP or HTTPS product URL.")
+        url = HttpUrl(value)
+        if url.username is not None or url.password is not None:
+            raise ValueError("Product URLs cannot contain credentials.")
+        return str(url)
+
+
+class CreateOrder(SubmitOrder):
+    """Internal creation input; public seller identity is resolved from the account."""
+
+    seller_name: str = Field(min_length=1, max_length=200)
+    contact: str | None = Field(default=None, max_length=500)
 
 
 class CreatedOrder(BaseModel):
@@ -44,6 +63,8 @@ class OrderSummary(BaseModel):
     revision: int
     seller_name: str
     product_name: str
+    product_details: str | None = None
+    domestic_product_url: str | None = None
     facts: list[ProductFact]
     notes: str | None
     is_demo: bool

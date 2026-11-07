@@ -38,7 +38,7 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
   seller.on("pageerror", error => runtimeErrors.push(error.message));
   const account = await registerSeller(seller.request);
   const created = await seller.request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: {
-    seller_name: "离线页面闭环模拟卖家", product_name: `Fictional Browser Cable Clips ${Date.now()}`,
+    product_name: `Fictional Browser Cable Clips ${Date.now()}`,
     facts, is_demo: true,
   } });
   expect(created.status()).toBe(201);

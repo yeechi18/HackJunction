@@ -44,7 +44,7 @@ uv run --project apps/server company-seed-demo
 uv run --project apps/server company-init-admin
 ```
 
-`company-db-init`执行Alembic迁移和LangGraph检查点初始化，可重复执行；`company-seed-demo`当前只校验演示夹具，不制造真实订单。负责人初始账号写入本机被忽略的`var/local-admin.txt`，初始化不覆盖已有账号；首次配置后重启API加载密码摘要。请不要把开发库或真实数据用作测试库。
+`company-db-init`执行Alembic迁移和LangGraph检查点初始化，可重复执行；`company-seed-demo`当前只校验演示夹具，不制造真实订单。负责人初始账号和密码写入本机被忽略的`var/local-admin.txt`，初始化不覆盖已有账号；首次配置后重启API加载密码摘要。请不要把开发库或真实数据用作测试库。
 
 ## 启动
 
@@ -72,11 +72,15 @@ PowerShell若拦截 `npm.ps1`，可将命令中的 `npm` 改为 `npm.cmd`。安�
 
 先在 [卖家注册](http://127.0.0.1:3000/seller/register) 输入邮箱并收取验证码，创建账号（密码8–12位，字母/数字/特殊符号至少两类），之后 [登录](http://127.0.0.1:3000/seller/login) 提交商品。订单自动绑定当前账号，在 [我的订单](http://127.0.0.1:3000/seller/orders) 查看；换浏览器或重启后重新登录即可找回，不依赖私有链接。其他卖家即使拿到完整链接也无法访问。
 
-本次升级首次需执行 `uv run --project apps/server company-db-init`，再重启 API 和 worker；以后正常启动即可。本机已完成迁移，并按要求清空之前的开发/演示订单及图片，负责人账号保持原样。数据清理是此次本机操作，迁移命令本身不会清空订单。
+更新代码若包含数据库迁移，先停止 API 和 worker，执行 `uv run --project apps/server company-db-init`，再启动服务；每次重启电脑无需重复迁移。本机当前已升级到 `0011_product_intake`，已有账号、订单及图片保留。此前按要求进行的一次性旧数据清理见 changelog，常规迁移不会清空数据。
 
 卖家密码使用 Argon2 摘要，登录保存在 HttpOnly 会话 cookie 中；默认7天过期，可主动退出。注册已要求邮箱验证码，当前尚无忘记密码流程，请记住注册邮箱和密码。本机库与公网演示库独立，两边分别注册，账号和订单不互通。
 
-QQ 发件邮箱与 SMTP 授权码配置见 [邮箱配置说明](docs/EMAIL_SETUP.md)。当前本机已升级至 `0010_registration_email`；其他机器先 `uv sync --project apps/server --locked --group dev`，再执行迁移并重启。
+QQ 发件邮箱与 SMTP 授权码配置见 [邮箱配置说明](docs/EMAIL_SETUP.md)。邮箱功能由 `0010_registration_email` 引入；其他机器更新后先 `uv sync --project apps/server --locked --group dev`，再执行迁移并重启。
+
+建单页现只填写五项：商品名字、商品明细信息、可选国内平台商品链接、商品参考图、补充商品说明与期望卖点。商家称呼和联系邮箱由后端从登录账号读取。明细会交给获客Agent继续核实；国内链接当前只保存为参考，不自动抓取。本轮迁移 `0011_product_intake` 为明细和链接增加数据库字段，必须先迁移再启动新版服务，否则订单列表可能报字段缺失的500。本机已完成迁移并验证工作台正常。
+
+负责人登录入口为 `/internal/login`，账号固定 `owner`。打开 `var/local-admin.txt`，密码框只填写 `password=` 右侧的完整值；不填写前缀、不把文件两行一起粘贴，也不使用卖家密码或 SMTP 授权码。
 
 ## 验证
 
