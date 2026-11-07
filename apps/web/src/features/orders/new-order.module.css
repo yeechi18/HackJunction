@@ -198,3 +198,15 @@
 .success :global(.private-link-box) input,
 .success :global(.button) { border-radius: 12px; }
 .success h1 > span { color: #5c7b4c; }
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.attachment button {
+  flex: none;
+}

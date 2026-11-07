@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ErrorNotice } from "@/components/async-feedback";
-import { apiFetch, errorMessage } from "@/lib/api";
+import { ApiError, apiFetch, errorMessage } from "@/lib/api";
 import type { components } from "@/lib/generated/api";
 import { factLabels, type CreatedOrder } from "./types";
 import styles from "./new-order.module.css";
@@ -13,10 +13,11 @@ const fieldsToShow = ["product_name", "material", "dimensions", "pack_quantity",
 const optionalFields = ["dimension_scope", "cable_diameter", "color", "contact", "notes"];
 const fieldLabels: Record<string, string> = { ...labels, contact: "联系方式", notes: "商品说明与期望卖点" };
 const limits: Record<string, number> = { seller_name: 200, product_name: 300, contact: 500, notes: 5000 };
-type ChatTurn = { user: string; reply: string; notice?: string | null };
-type ChatResult = components["schemas"]["IntakeChatResult"];
+type ChatTurn = { user: string; reply: string };
+type ChatResult = components["schemas"]["IntakeDraft"];
 
-const greeting = "你好，我是你的上架顾问。发我淘宝、天猫、京东、1688 或拼多多的店铺或商品链接，也可以直接说说你想上架哪件商品。我会把能整理出的资料放到右边，再和你补齐缺项。";
+const greeting = "你好，我是你的上架顾问。请在淘宝卖家后台（千牛）的商品管理中选择要上架的商品，使用导出功能下载 CSV 或 Excel 数据包，再上传到这里。请保留标题、价格、规格、图片链接和详情参数等公开商品信息。我会把整理出的资料填入右侧资料卡。";
+const maxFileSize = 2 * 1024 * 1024;
 
 export function NewOrderForm() {
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -24,8 +25,11 @@ export function NewOrderForm() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState("");
-  const [activeSource, setActiveSource] = useState("");
-  const [sources, setSources] = useState<string[]>([]);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [sentAttachment, setSentAttachment] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const hasNewAttachment = attachment !== null && attachment !== sentAttachment;
+  const outgoing = [hasNewAttachment ? `附件：${attachment.name}` : "", message.trim()].filter(Boolean).join("\n");
   const [confirmed, setConfirmed] = useState(false);
   const [updatedKeys, setUpdatedKeys] = useState<string[]>([]);
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -40,17 +44,19 @@ export function NewOrderForm() {
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const user = message.trim();
-    if (!user || sending || busy) return;
+    if (!outgoing || sending || busy) return;
     setSending(true);
     setChatError("");
     try {
+      const form = new FormData();
+      form.set("payload", JSON.stringify({
+        message: message.trim(), last_reply: turns.at(-1)?.reply ?? "", fields,
+      }));
+      if (attachment) form.set("file", attachment);
       const result = await apiFetch<ChatResult>("/orders/intake-chat", {
         method: "POST",
         timeoutMs: 45000,
-        body: JSON.stringify({
-          message: user, last_reply: turns.at(-1)?.reply ?? "", previous_source_url: activeSource, fields,
-        }),
+        body: form,
       });
       const updates = Object.fromEntries(Object.entries(result.updates).filter(([, value]) => value));
       setUpdatedKeys(Object.keys(updates));
@@ -58,15 +64,13 @@ export function NewOrderForm() {
         setFields(current => ({ ...current, ...updates }));
         setConfirmed(false);
       }
-      const source = result.source_url;
-      if (source || result.import_notice) setActiveSource(source ?? "");
-      if (source && Object.keys(updates).some(key => key === "product_name" || key in factLabels)) {
-        setSources(current => [...new Set([...current, source])].slice(-3));
-      }
-      setTurns(current => [...current, { user, reply: result.reply, notice: result.import_notice }]);
+      setSentAttachment(attachment);
+      setTurns(current => [...current, { user: outgoing, reply: result.reply }]);
       setMessage("");
     } catch (caught) {
-      setChatError(`${errorMessage(caught)} 也可以直接在资料卡补充。`);
+      setChatError(attachment && caught instanceof ApiError && [413, 422].includes(caught.status ?? 0)
+        ? "无法读取这个数据包。请检查文件格式，或只导出本次要上架的商品后重试。"
+        : `${errorMessage(caught)} 也可以直接在资料卡补充。`);
     } finally {
       setSending(false);
     }
@@ -82,7 +86,6 @@ export function NewOrderForm() {
     event.preventDefault();
     if (busy || sending || !canSubmit) return;
     const form = new FormData(event.currentTarget);
-    const notes = [fields.notes?.trim(), ...sources.map(url => `参考商品链接：${url}`)].filter(Boolean);
     const productName = fields.product_name.trim();
     const body = JSON.stringify({
       seller_name: fields.seller_name.trim(),
@@ -92,7 +95,7 @@ export function NewOrderForm() {
         const value = fields[key]?.trim();
         return value ? [{ key, value, confirmed: true }] : [];
       }),
-      notes: notes.join("\n") || null,
+      notes: fields.notes?.trim() || null,
       is_demo: form.get("is_demo") === "on",
     });
     if (submission.current?.body !== body) submission.current = { body, key: crypto.randomUUID() };
@@ -145,7 +148,7 @@ export function NewOrderForm() {
         <section className={styles.intro} aria-labelledby="intake-title">
           <span className={styles.eyebrow}>01 / LISTING STUDIO</span>
           <h1 id="intake-title">和上架顾问聊聊<span>.</span></h1>
-          <p>分享店铺或商品链接，边聊边整理上架资料。</p>
+          <p>上传淘宝卖家后台导出的商品数据包，边聊边整理上架资料。</p>
           <span className={styles.spark} aria-hidden="true">✳</span>
         </section>
         <section className={styles.status} aria-labelledby="intake-progress">
@@ -163,41 +166,61 @@ export function NewOrderForm() {
           <header className={styles.heading}>
             <div className={styles.headingTitle}>
               <span className={styles.icon} aria-hidden="true">✳</span>
-              <div><h2 id="intake-chat-heading">上架顾问</h2><small>分享链接或描述商品</small></div>
+              <div><h2 id="intake-chat-heading">上架顾问</h2><small>上传商品数据包或补充信息</small></div>
             </div>
             <span className={styles.badge}><i aria-hidden="true" />AI 接待</span>
           </header>
           <div className={styles.log} role="log" ref={transcript} aria-label="上架对话">
             <div className={styles.agent}><small>上架顾问 · AI</small><p>{greeting}</p></div>
-            {turns.map(({ user, reply, notice }, index) => (
+            {turns.map(({ user, reply }, index) => (
               <div className={styles.turn} key={index}>
                 <div className={styles.user}><small>你</small><p>{user}</p></div>
-                <div className={styles.agent}><small>上架顾问 · AI</small><p>{reply}</p>{notice && <p className={styles.notice}>{notice}</p>}</div>
+                <div className={styles.agent}><small>上架顾问 · AI</small><p>{reply}</p></div>
               </div>
             ))}
             {sending && <div className={styles.turn}>
-              <div className={styles.user}><small>你</small><p>{message.trim()}</p></div>
+              <div className={styles.user}><small>你</small><p>{outgoing}</p></div>
               <div className={styles.agent}>
                 正在整理资料 <span className={styles.dots} aria-hidden="true"><i /><i /><i /></span>
               </div>
             </div>}
           </div>
           <form className={styles.composer} method="post" onSubmit={send}>
-            {!turns.length && !sending && (
-              <div className={styles.prompts}>
-                <button type="button" disabled={busy} onClick={() => composer.current?.focus()}>粘贴店铺链接 ↗</button>
-                <button type="button" disabled={busy || Boolean(message)} onClick={() => {
-                  setMessage("我想上架的商品是");
-                  composer.current?.focus();
-                }}>描述我的商品 ↗</button>
-              </div>
-            )}
-            <textarea ref={composer} aria-label="发给上架顾问" placeholder="粘贴店铺或商品链接，或补充商品信息…" rows={3}
+            <div className={styles.prompts}>
+              <input ref={fileInput} type="file" accept=".csv,.xlsx" aria-label="商品数据包" hidden
+                disabled={sending || busy} onChange={event => {
+                  const selected = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (!selected) return;
+                  if (!/\.(csv|xlsx)$/i.test(selected.name) || !selected.size || selected.size > maxFileSize) {
+                    setChatError("请选择非空的 CSV 或 Excel（.xlsx）文件，大小不超过 2 MB。");
+                    return;
+                  }
+                  setChatError("");
+                  setAttachment(selected);
+                }} />
+              <button type="button" disabled={sending || busy} onClick={() => fileInput.current?.click()}>
+                {attachment ? "更换商品数据包" : "＋ 上传商品数据包"}
+              </button>
+              {!turns.length && <button type="button" disabled={sending || busy || Boolean(message)} onClick={() => {
+                setMessage("我想上架的商品是");
+                composer.current?.focus();
+              }}>描述我的商品 ↗</button>}
+            </div>
+            {attachment && <div className={styles.attachment}>
+              <span role="status">{attachment.name} · {hasNewAttachment ? "待发送" : "已发送"}</span>
+              <button type="button" disabled={sending || busy} onClick={() => {
+                setAttachment(null);
+                setSentAttachment(null);
+                setChatError("");
+              }}>移除</button>
+            </div>}
+            <textarea ref={composer} aria-label="发给上架顾问" placeholder="补充要上架的商品或规格信息…" rows={3}
               value={message} onChange={event => setMessage(event.target.value)} disabled={sending || busy} maxLength={5000} />
             {chatError && <ErrorNotice>{chatError}</ErrorNotice>}
             <div className={styles.actions}>
-              <small>链接需要公开访问。不确定的规格可以稍后补充。</small>
-              <button className={styles.button} type="submit" disabled={sending || busy || !message.trim()}>发送 <span aria-hidden="true">↗</span></button>
+              <small>支持 CSV / Excel（.xlsx），单个文件不超过 2 MB。</small>
+              <button className={styles.button} type="submit" disabled={sending || busy || !outgoing}>发送 <span aria-hidden="true">↗</span></button>
             </div>
           </form>
         </section>

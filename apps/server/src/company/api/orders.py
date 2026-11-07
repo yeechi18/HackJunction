@@ -2,10 +2,13 @@ from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile
+from pydantic import ValidationError
 from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
-from company.agents.intake_chat import IntakeChatInput, IntakeChatResult, collect_intake
+from company.agents.intake_chat import IntakeChatInput, IntakeDraft, collect_intake
+from company.agents.product_export import MAX_EXPORT_BYTES, read_product_export
 from company.api.dependencies import DB, Configuration
 from company.persistence.models import Message, OrderEvent
 from company.providers.mimo import ProviderError
@@ -61,10 +64,13 @@ async def create(
     return await orders.create_order(database, settings, body)
 
 
-@router.post("/intake-chat", response_model=IntakeChatResult)
+@router.post("/intake-chat", response_model=IntakeDraft)
 async def intake_chat(
-    body: IntakeChatInput, request: Request, settings: Configuration
-) -> IntakeChatResult:
+    request: Request,
+    settings: Configuration,
+    payload: Annotated[str, Form(max_length=40000)],
+    file: UploadFile | None = None,
+) -> IntakeDraft:
     check_origin(request, settings)
     # This endpoint precedes order creation, so the per-order model budget cannot apply.
     attempts = request.app.state.intake_chat_attempts
@@ -75,7 +81,18 @@ async def intake_chat(
         raise HTTPException(status_code=429, detail="Intake chat is busy.")
     attempts.append(now)
     try:
-        return await collect_intake(body, settings)
+        body = IntakeChatInput.model_validate_json(payload)
+        export = ""
+        if file:
+            data = await file.read(MAX_EXPORT_BYTES + 1)
+            if len(data) > MAX_EXPORT_BYTES:
+                raise HTTPException(status_code=413, detail="Product export is too large.")
+            export = await run_in_threadpool(read_product_export, file.filename or "", data)
+        if not body.message.strip() and not export:
+            raise ValueError("Missing message or file")
+        return await collect_intake(body, settings, export)
+    except (ValidationError, ValueError):
+        raise HTTPException(status_code=422, detail="Invalid intake message or export.") from None
     except ProviderError:
         raise HTTPException(status_code=503, detail="Intake assistant is unavailable.") from None
 

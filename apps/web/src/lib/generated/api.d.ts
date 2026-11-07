@@ -730,6 +730,13 @@ export interface components {
              */
             updated_at: string;
         };
+        /** Body_intake_chat_api_v1_orders_intake_chat_post */
+        Body_intake_chat_api_v1_orders_intake_chat_post: {
+            /** Payload */
+            payload: string;
+            /** File */
+            file?: string | null;
+        };
         /** CommandView */
         CommandView: {
             /**
@@ -1163,31 +1170,11 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** IntakeChatInput */
-        IntakeChatInput: {
-            /** Message */
-            message: string;
-            /**
-             * Last Reply
-             * @default
-             */
-            last_reply: string;
-            /**
-             * Previous Source Url
-             * @default
-             */
-            previous_source_url: string;
-            fields: components["schemas"]["IntakeFields"];
-        };
-        /** IntakeChatResult */
-        IntakeChatResult: {
+        /** IntakeDraft */
+        IntakeDraft: {
             /** Reply */
             reply: string;
             updates: components["schemas"]["IntakeFields"];
-            /** Source Url */
-            source_url?: string | null;
-            /** Import Notice */
-            import_notice?: string | null;
         };
         /** IntakeFields */
         IntakeFields: {
@@ -2242,7 +2229,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["IntakeChatInput"];
+                "multipart/form-data": components["schemas"]["Body_intake_chat_api_v1_orders_intake_chat_post"];
             };
         };
         responses: {
@@ -2252,7 +2239,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IntakeChatResult"];
+                    "application/json": components["schemas"]["IntakeDraft"];
                 };
             };
             /** @description Validation Error */

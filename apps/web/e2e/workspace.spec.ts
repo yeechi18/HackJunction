@@ -29,15 +29,21 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   const productName = `Playwright 虚构理线夹 ${suffix}`;
   await page.goto("/orders/new");
   await page.getByLabel(/你的称呼/).fill("Playwright 演示卖家");
-  await page.route("**/api/v1/orders/intake-chat", route => route.fulfill({
-    json: {
+  await page.route("**/api/v1/orders/intake-chat", route => {
+    expect(route.request().headers()["content-type"]).toContain("multipart/form-data");
+    expect(route.request().postData()).toContain("filename=\"products.csv\"");
+    expect(route.request().postData()).toContain(productName);
+    return route.fulfill({ json: {
       reply: "已整理商品名和材质。",
       updates: { product_name: productName, material: "硅胶" },
-      source_url: "https://item.taobao.com/item.htm?id=123",
-      import_notice: null,
-    },
-  }));
-  await page.getByLabel("发给上架顾问").fill("https://item.taobao.com/item.htm?id=123");
+    } });
+  });
+  await page.getByLabel("商品数据包", { exact: true }).setInputFiles({
+    name: "products.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(`标题,材质\n${productName},硅胶`),
+  });
+  await expect(page.getByText("products.csv · 待发送")).toBeVisible();
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByLabel(/中文商品名/)).toHaveValue(productName);
   await expect(page.getByLabel(/^材质/)).toHaveValue("硅胶");
