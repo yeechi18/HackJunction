@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { ShelfwiseHeader } from "@/components/shelfwise-header";
 import "./globals.css";
 import "./portal.css";
+import "./shelfwise.css";
 
 export const metadata: Metadata = {
-  title: "出海工坊 Listing Studio｜让好商品，说好英语",
-  description: "为跨境小卖家设计的 Amazon 美国站商品本地化服务：从中文商品事实，到美式英语文案与图片上架包。",
+  title: "上架有方 Shelfwise｜让好商品，走向世界",
+  description: "上架有方 Shelfwise，为跨境小卖家提供 Amazon 美国站商品本地化上架服务，从中文资料到英文文案、图片与完整上架资料包。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}</body></html>;
+  return <html lang="zh-CN"><body><ShelfwiseHeader />{children}</body></html>;
 }

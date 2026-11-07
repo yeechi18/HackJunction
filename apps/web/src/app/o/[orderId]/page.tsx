@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { PortalShell } from "@/components/portal-shell";
+import styles from "@/features/orders/seller-workspace.module.css";
 import { SellerWorkspace } from "@/features/orders/seller-workspace";
 
-export const metadata: Metadata = { title: "我的订单｜出海工坊", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: "订单会话｜上架有方 Shelfwise", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function SellerOrderPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await params;
-  return <PortalShell><SellerWorkspace key={orderId} orderId={orderId} /></PortalShell>;
+  return (
+    <div className="sw-home">
+      <main className={styles.workspace} id="sw-main">
+        <SellerWorkspace key={orderId} orderId={orderId} />
+      </main>
+    </div>
+  );
 }

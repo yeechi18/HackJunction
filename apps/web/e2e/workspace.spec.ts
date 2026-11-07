@@ -15,10 +15,17 @@ test("登录表单在脚本未加载时禁止提交密码", async ({ browser, ba
 test("首页与状态页可访问，移动端能进入商品资料表单", async ({ page }) => {
   await registerSeller(page.request);
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("说好英语");
-  await expect(page.getByText("虚构演示样例", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("让好商品");
+  if (process.env.E2E_ARTIFACT_DIR) {
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/home-desktop.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/home-desktop-top.png` });
+  }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("link", { name: /提交商品资料/ }).click();
+  if (process.env.E2E_ARTIFACT_DIR) {
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/home-mobile.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/home-mobile-top.png` });
+  }
+  await page.getByRole("link", { name: /选择此服务，开始上架/ }).click();
   await expect(page).toHaveURL(/\/orders\/new$/);
   await expect(page.getByLabel(/商品明细信息/)).toBeVisible();
   await expect(page.getByRole("button", { name: /保存资料，创建订单/ })).toBeVisible();
@@ -63,6 +70,15 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   }).toBe("waiting_for_owner");
   await page.locator(".workspace-toolbar").getByRole("button", { name: /刷新/ }).click();
   await expect(page.locator(".order-identity")).toContainText(`资料版本 ${revision}`);
+  if (process.env.E2E_ARTIFACT_DIR) {
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/workspace-desktop.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/workspace-desktop-top.png` });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/workspace-mobile.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.E2E_ARTIFACT_DIR}/workspace-mobile-top.png` });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  }
   await page.getByRole("button", { name: /补充商品资料/ }).click();
   await expect(page.locator(".supplement-form .fact-edit-row")).toHaveCount(0);
   await page.getByLabel("补充说明", { exact: true }).fill("参考尺寸4 × 3 × 2 cm，文案简洁，避免夸大性能。");

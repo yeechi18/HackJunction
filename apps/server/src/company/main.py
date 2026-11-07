@@ -1,5 +1,6 @@
 """Order access and command APIs; the separate worker drives the durable intake graph."""
 
+from collections import deque
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -41,6 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     application.state.settings = configuration
+    application.state.intake_chat_attempts = deque()
 
     @application.exception_handler(RequestValidationError)
     async def safe_validation_error(request, error):

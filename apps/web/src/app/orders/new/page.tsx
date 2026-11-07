@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { PortalShell } from "@/components/portal-shell";
+import { NewOrderForm } from "@/features/orders/new-order";
 import { BrowserCompatibility } from "@/components/browser-compatibility";
 import { SellerGate } from "@/features/account/session";
-import { NewOrderForm } from "@/features/orders/new-order";
+import styles from "@/features/orders/new-order.module.css";
 
-export const metadata: Metadata = { title: "提交商品资料｜出海工坊" };
+export const metadata: Metadata = { title: "提交商品资料｜上架有方 Shelfwise" };
 
 export default function NewOrderPage() {
-  return <PortalShell><BrowserCompatibility><SellerGate><NewOrderForm /></SellerGate></BrowserCompatibility></PortalShell>;
+  return (
+    <div className="sw-home">
+      <main className={styles.workspace} id="sw-main">
+        <BrowserCompatibility><SellerGate><NewOrderForm /></SellerGate></BrowserCompatibility>
+      </main>
+    </div>
+  );
 }

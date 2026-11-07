@@ -1,11 +1,17 @@
+from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile
+from pydantic import ValidationError
 from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
+from company.agents.intake_chat import IntakeChatInput, IntakeDraft, collect_intake
+from company.agents.product_export import MAX_EXPORT_BYTES, read_product_export
 from company.api.dependencies import DB, Configuration
 from company.persistence.models import Message, OrderEvent, SellerAccount
+from company.providers.mimo import ProviderError
 from company.schemas.orders import (
     CreatedOrder,
     CreateOrder,
@@ -66,6 +72,44 @@ async def create(
         raise HTTPException(401, "Seller account is unavailable.")
     creation = CreateOrder(**body.model_dump())
     return await orders.create_order(database, settings, creation, seller_account_id=account.id)
+
+
+@router.post("/intake-chat", response_model=IntakeDraft)
+async def intake_chat(
+    request: Request,
+    database: DB,
+    settings: Configuration,
+    payload: Annotated[str, Form(max_length=40000)],
+    file: UploadFile | None = None,
+) -> IntakeDraft:
+    # Draft collection follows the same account and CSRF boundary as order creation.
+    token = request.cookies.get(ACCOUNT_COOKIE)
+    session = await get_session(database, token, "account")
+    if session.account_id is None:
+        raise HTTPException(401, "Seller sign-in is required.")
+    check_csrf(request, settings, token)
+    attempts = request.app.state.intake_chat_attempts
+    now = monotonic()
+    while attempts and attempts[0] <= now - 60:
+        attempts.popleft()
+    if len(attempts) >= 20:
+        raise HTTPException(status_code=429, detail="Intake chat is busy.")
+    attempts.append(now)
+    try:
+        body = IntakeChatInput.model_validate_json(payload)
+        export = ""
+        if file:
+            data = await file.read(MAX_EXPORT_BYTES + 1)
+            if len(data) > MAX_EXPORT_BYTES:
+                raise HTTPException(status_code=413, detail="Product export is too large.")
+            export = await run_in_threadpool(read_product_export, file.filename or "", data)
+        if not body.message.strip() and not export:
+            raise ValueError("Missing message or file")
+        return await collect_intake(body, settings, export)
+    except (ValidationError, ValueError):
+        raise HTTPException(status_code=422, detail="Invalid intake message or export.") from None
+    except ProviderError:
+        raise HTTPException(status_code=503, detail="Intake assistant is unavailable.") from None
 
 
 @router.get("/{order_id}", response_model=OrderSummary)

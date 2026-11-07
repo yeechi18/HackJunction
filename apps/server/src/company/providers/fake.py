@@ -331,6 +331,11 @@ class FakeProvider:
                     )
                 ],
             }
+        elif name == "IntakeDraft":
+            answer = {
+                "reply": "当前是离线测试模式。请在资料卡补充并核对商品资料。",
+                "updates": {},
+            }
         elif name == "ResearchDraft":
             answer = research_fixture(context)
         elif name == "ListingDraft":

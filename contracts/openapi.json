@@ -647,6 +647,47 @@
         }
       }
     },
+    "/api/v1/orders/intake-chat": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Intake Chat",
+        "operationId": "intake_chat_api_v1_orders_intake_chat_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_chat_api_v1_orders_intake_chat_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeDraft"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/orders/{order_id}": {
       "get": {
         "tags": [
@@ -2236,6 +2277,32 @@
         ],
         "title": "AttemptView"
       },
+      "Body_intake_chat_api_v1_orders_intake_chat_post": {
+        "properties": {
+          "payload": {
+            "type": "string",
+            "maxLength": 40000,
+            "title": "Payload"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "title": "Body_intake_chat_api_v1_orders_intake_chat_post"
+      },
       "CodeDeliveryView": {
         "properties": {
           "expires_in_seconds": {
@@ -3084,6 +3151,57 @@
           "summary"
         ],
         "title": "IntakeAnalysis"
+      },
+      "IntakeDraft": {
+        "properties": {
+          "reply": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reply"
+          },
+          "updates": {
+            "$ref": "#/components/schemas/IntakeFields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reply",
+          "updates"
+        ],
+        "title": "IntakeDraft"
+      },
+      "IntakeFields": {
+        "properties": {
+          "product_name": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Product Name",
+            "default": ""
+          },
+          "product_details": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Product Details",
+            "default": ""
+          },
+          "domestic_product_url": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Domestic Product Url",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IntakeFields"
       },
       "IntakeIssue": {
         "properties": {
