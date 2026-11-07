@@ -23,7 +23,6 @@ from company.persistence.publication import (
     FeedbackRequest,
     PublishAttempt,
     SellerConfirmation,
-    SimulatedListing,
 )
 from company.providers.factory import build_provider
 from company.providers.mimo import ProviderError
@@ -42,7 +41,6 @@ from company.schemas.publication import (
     ConfirmationInput,
     ConfirmationQueued,
     ConfirmationView,
-    DemoListingView,
     FeedbackInput,
     FeedbackQueued,
     PublicationView,
@@ -123,8 +121,6 @@ async def current_delivery(session: AsyncSession, order: Order, version_id: UUID
     if expected_hash != delivery.content_hash:
         raise PublicationError("The delivery no longer matches its immutable content hash.")
     public = json.loads(json.dumps(delivery.snapshot, ensure_ascii=False))
-    if public.get("is_demo") is not order.is_demo:
-        raise PublicationError("Delivery mode does not match this order.")
     listing = {key: version.draft[key] for key in ("title", "bullets", "description")}
     if public.get("listing") != listing or public.get("faqs") != version.draft.get("faqs", []):
         raise PublicationError("The current version differs from its delivered content.")
@@ -140,7 +136,7 @@ async def current_delivery(session: AsyncSession, order: Order, version_id: UUID
             or asset.version_id != version_id
             or asset.delivered_at is None
             or asset.sha256 != image["sha256"]
-            or asset.is_demo is not order.is_demo
+            or asset.is_demo
             or asset.kind == "reference"
         ):
             raise PublicationError(
@@ -362,7 +358,7 @@ async def feedback_base(session: AsyncSession, order: Order, version_id: UUID) -
                 "Feedback must target the latest delivered base for current input."
             ) from None
         historical = SimpleNamespace(
-            id=order.id, revision=latest.input_revision, is_demo=order.is_demo
+            id=order.id, revision=latest.input_revision
         )
         return await current_delivery(session, historical, version_id)
 
@@ -920,43 +916,4 @@ async def publication_view(session: AsyncSession, order_id: UUID) -> Publication
         )
         if attempt
         else None,
-    )
-
-
-async def public_demo(
-    session: AsyncSession, public_id: str
-) -> tuple[SimulatedListing, DemoListingView]:
-    record = await session.scalar(
-        select(SimulatedListing).where(SimulatedListing.public_id == public_id)
-    )
-    if record is None:
-        raise HTTPException(404, "Demo listing not found.")
-    order = await session.get(Order, record.order_id)
-    attempt = await session.scalar(
-        select(PublishAttempt).where(PublishAttempt.operation_key == record.operation_key)
-    )
-    if (
-        order is None
-        or not order.is_demo
-        or order.phase != "COMPLETED"
-        or attempt is None
-        or attempt.status != "SIMULATED"
-        or attempt.mode != "simulated"
-        or record.snapshot.get("is_demo") is not True
-        or frozen_hash(record.snapshot) != record.snapshot_hash
-    ):
-        raise HTTPException(404, "Demo listing not found.")
-    payload = record.snapshot
-    images = [
-        {**image, "url": f"/api/v1/demo-listings/{public_id}/assets/{image['id']}"}
-        for image in payload["images"]
-    ]
-    return record, DemoListingView(
-        public_id=public_id,
-        listing=payload["listing"],
-        faqs=payload["faqs"],
-        images=images,
-        listing_price=payload["listing_price"],
-        currency=payload["currency"],
-        marketplace=payload["marketplace"],
     )

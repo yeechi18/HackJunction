@@ -32,7 +32,7 @@ def supplied_evidence(context: dict[str, Any]) -> list[dict[str, Any]]:
         for item in evidence
         if item.get("id")
         and item.get("status", "provided") not in {"failed", "failure"}
-        and (context.get("is_demo") is True or item.get("is_demo") is not True)
+        and item.get("is_demo") is not True
     ]
     if len({item["id"] for item in usable}) != len(usable):
         raise ValueError("Evidence IDs must be unique.")
@@ -69,6 +69,11 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
     price_range = observed_price_range(evidence)
     payload = {
         "product_name": context.get("product_name"),
+        "product_details": context.get("product_details"),
+        "domestic_product_url": context.get("domestic_product_url"),
+        "seller_requirements": context.get("seller_requirements"),
+        "reference_images": context.get("reference_images", []),
+        "initial_analysis": context.get("initial_analysis"),
         "confirmed_facts": [fact.model_dump() for fact in facts],
         "evidence": evidence,
         "program_observed_price_range": price_range.model_dump() if price_range else None,
@@ -83,6 +88,13 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
     )
     source_ids = {item["id"] for item in evidence}
     fact_ids = {fact.id for fact in facts}
+    for plan in draft.selling_point_plan:
+        if set(plan.fact_ids) - fact_ids:
+            raise ProviderError("Selling-point plan cited product facts that were not supplied.")
+        if plan.strategy == "use_confirmed_fact" and not plan.fact_ids:
+            raise ProviderError("A factual selling point requires confirmed fact references.")
+        if set(plan.target_fields) - {"title", "bullets", "description", "faqs", "image_plan"}:
+            raise ProviderError("Selling-point plan targeted an unsupported listing field.")
     for question in draft.buyer_questions:
         # A known seller fact is still a valid source, but belongs in its own namespace.
         # Preserve the reference rather than confusing it with external market evidence.

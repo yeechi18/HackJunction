@@ -1,5 +1,6 @@
 """M4 real-Postgres persistence tests with injected, offline providers."""
 
+import json
 from contextlib import AsyncExitStack
 from types import SimpleNamespace
 from uuid import uuid4
@@ -62,11 +63,16 @@ def listing(quantity=4):
 class ProductionStub:
     def __init__(self, *, wrong_first=False, hook=None, fail=False):
         self.calls = []
+        self.payloads = []
         self.generations = 0
         self.wrong_first, self.hook, self.fail = wrong_first, hook, fail
 
     async def generate_json(self, schema, messages, **kwargs):
         self.calls.append(schema.__name__)
+        content = messages[-1]["content"]
+        if isinstance(content, list):
+            content = content[0]["text"]
+        self.payloads.append(json.loads(content))
         if self.fail:
             raise ProviderError("Injected provider failure; no remote request was made.")
         if self.hook:
@@ -117,11 +123,9 @@ async def production_context(postgres_test_settings):
         session.add(
             Order(
                 id=order_id,
-                seller_name="M4 Test",
                 product_name="Demo cable clips",
                 phase="RESEARCH",
                 revision=1,
-                is_demo=True,
             )
         )
         await session.flush()
@@ -232,7 +236,7 @@ async def test_changed_evidence_during_model_rejects_result_but_records_usage(pr
                     observed_at=now(),
                     scope="this fictional SKU",
                     content="New competitor observation",
-                    is_demo=True,
+                    is_demo=False,
                     data={"price": "9.99", "currency": "USD"},
                 )
             )
@@ -301,19 +305,10 @@ async def test_manual_evidence_and_artifacts_are_owner_only(production_context):
         )
         assert login.status_code == 200
         owner_tokens.append(client.cookies.get("owner_session"))
-        body = {
-            "source": "Fictional manual source",
-            "content": "Comparable desk clips",
-            "is_demo": True,
-            "data": {"price": "9.99", "currency": "USD"},
-        }
-        assert (await client.post(f"{path}/evidence", json=body)).status_code == 403
-        response = await client.post(
-            f"{path}/evidence", json=body, headers={"X-CSRF-Token": login.json()["csrf_token"]}
-        )
-        assert response.status_code == 201, response.text
-        assert response.json()["provider"] == "manual"
-        assert len((await client.get(f"{path}/evidence")).json()["items"]) == 1
+        assert (
+            await client.post(f"{path}/evidence", json={"content": "retired"})
+        ).status_code == 405
+        assert (await client.get(f"{path}/evidence")).json()["items"] == []
         await research_step(order_id, command_id, ProductionStub(), database=database)
         await generation_step(order_id, command_id, 0, ProductionStub(), database=database)
         production = await client.get(f"{path}/production")
@@ -323,3 +318,24 @@ async def test_manual_evidence_and_artifacts_are_owner_only(production_context):
         assert len(result["runs"]) == 2 and result["reviews"] == []
         assert result["versions"][0]["status"] == "draft"
         assert result["runs"][0]["cost_usd"] is None
+
+
+async def test_product_inputs_and_seller_requirements_reach_research_and_generation(
+    production_context,
+):
+    _, database, order_id, command_id, snapshot_id, _ = production_context
+    async with database.sessions() as session, session.begin():
+        order = await session.get(Order, order_id)
+        order.product_details = "原始材质描述及待确认要求"
+        order.domestic_product_url = "https://example.invalid/product"
+        snapshot = await session.get(InputSnapshot, snapshot_id)
+        snapshot.notes = "突出桌面整洁，文风简洁；防水尚未证实，不可承诺。"
+    provider = ProductionStub()
+    await research_step(order_id, command_id, provider, database=database)
+    await generation_step(order_id, command_id, 0, provider, database=database)
+    for payload in provider.payloads:
+        assert payload["product_details"] == "原始材质描述及待确认要求"
+        assert payload["domestic_product_url"] == "https://example.invalid/product"
+        assert "防水尚未证实" in payload["seller_requirements"]
+        assert payload["reference_images"] == []
+        assert "is_demo" not in payload

@@ -6,7 +6,6 @@ import type { OperationsPanelProps } from "./support-panel";
 import styles from "./operations-panel.module.css";
 
 type Metrics = {
-  is_demo: boolean;
   publish_mode: string;
   recorded_model_calls: number;
   calls_by_role: Record<string, number>;
@@ -113,7 +112,7 @@ function UsageWorkspace({ orderId, csrfToken, refresh }: OperationsPanelProps) {
         {Object.entries(metrics.calls_by_role).map(([role, count]) => <div key={role}><dt>{roleLabels[role] ?? "其他模型处理"}</dt><dd>{count} 次记录</dd></div>)}
         <div><dt>卖家反馈 / 未过审记录</dt><dd>{metrics.feedback_requests} / {metrics.failed_reviews}</dd></div>
       </dl>
-      <p className={styles.hint}>仅统计本单已保存用量；缺失费用保留为未知。{metrics.is_demo ? " 当前为虚构样例订单。" : ""}{metrics.publish_mode === "simulated" ? " 发布使用模拟模式。" : ""}</p>
+      <p className={styles.hint}>仅统计本单已保存用量；缺失费用保留为未知。{metrics.publish_mode === "simulated" ? " 发布使用模拟模式。" : ""}</p>
       {(metrics.model_mode === "offline" || metrics.model_mode === "mixed") && <p className={styles.hint}>离线演示调用不向模型服务发出真实请求，已与真实模型用量分列。</p>}
     </>}
     <div className={styles.retry}>

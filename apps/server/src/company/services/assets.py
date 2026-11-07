@@ -124,7 +124,7 @@ async def save_reference_asset(
         byte_size=stored.byte_size,
         width=stored.width,
         height=stored.height,
-        is_demo=order.is_demo,
+        is_demo=False,
         image_metadata={"exif_removed": True},
         delivered_at=None,
     )
@@ -153,7 +153,12 @@ async def list_assets(database: AsyncSession, order_id: UUID, *, owner: bool) ->
     used, pending = await reference_deletion_state(database, order_id)
     return AssetList(
         items=[
-            asset_view(asset, deletion_block_reason=deletion_reason(asset, used, pending))
+            asset_view(
+                asset,
+                deletion_block_reason="负责人仅可查看素材，不能修改。"
+                if owner
+                else deletion_reason(asset, used, pending),
+            )
             for asset in rows
         ]
     )
@@ -196,7 +201,7 @@ async def register_rendered_assets(
     version_id: UUID | None = None,
 ) -> list[Asset]:
     """Flush but do not commit: the caller commits assets with its exact version snapshot."""
-    order = await load_order(database, order_id)
+    await load_order(database, order_id)
     records = []
     for image in rendered:
         asset = Asset(
@@ -210,7 +215,7 @@ async def register_rendered_assets(
             byte_size=image.path.stat().st_size,
             width=image.width,
             height=image.height,
-            is_demo=order.is_demo,
+            is_demo=False,
             delivered_at=None,
             image_metadata={
                 "text_layers": image.text_layers,

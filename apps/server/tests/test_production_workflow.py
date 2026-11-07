@@ -2,14 +2,12 @@
 
 from types import SimpleNamespace
 
-import httpx
 import pytest
 from fastapi import HTTPException
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from pydantic import SecretStr
 from sqlalchemy import delete, select
 
-from company.api.production import router
 from company.cli.init_db import initialize_database
 from company.main import create_app
 from company.persistence.database import Database, checkpoint_conninfo
@@ -17,7 +15,6 @@ from company.persistence.models import Command, InputSnapshot, Job, Order, now
 from company.persistence.production import DeliverableVersion, ProductionStepReceipt
 from company.schemas.commands import DecisionInput
 from company.schemas.orders import CreateOrder
-from company.services.access import create_session, csrf_token
 from company.services.orders import create_order, enqueue_decision
 from company.services.workflow import process_one_job
 
@@ -130,10 +127,9 @@ async def context(postgres_test_settings):
                 session,
                 settings,
                 CreateOrder(
-                    seller_name="M4 workflow test",
+                    product_details="Known test product specifications.",
                     product_name="虚构理线夹",
                     facts=facts(),
-                    is_demo=True,
                 ),
             )
         identifiers.append(created.id)
@@ -310,58 +306,14 @@ async def test_changed_revision_during_generation_does_not_override_new_phase(co
     assert provider.generations == 1
 
 
-async def test_owner_can_queue_old_accepted_research_but_cannot_bypass_acceptance(context):
+async def test_manual_start_is_removed_and_acceptance_still_starts_production(context):
     settings, database, create = context
     order_id = await create()
-    provider = TypedProductionProvider(wrong_first=False)
-    await process_one_job(settings, provider=provider, order_id=order_id, include_production=False)
-    await accept(database, order_id)
-    await process_one_job(settings, provider=provider, order_id=order_id, include_production=False)
-    async with database.sessions() as session:
-        token, owner = await create_session(session, settings, "owner")
-        await session.commit()
-        owner_hash = owner.token_hash
     app = create_app(settings)
-    if "/api/v1/internal/orders/{order_id}/production/start" not in app.openapi()["paths"]:
-        app.include_router(router, prefix="/api/v1")
-    try:
-        async with app.router.lifespan_context(app):
-            async with httpx.AsyncClient(
-                transport=httpx.ASGITransport(app=app),
-                base_url=settings.public_app_url,
-                cookies={"owner_session": token},
-            ) as client:
-                path = f"/api/v1/internal/orders/{order_id}/production/start"
-                headers = {
-                    "X-CSRF-Token": csrf_token(settings, token),
-                    "Idempotency-Key": "start-production",
-                }
-                assert (await client.post(path, json={"expected_revision": 1})).status_code == 403
-                first = await client.post(path, json={"expected_revision": 1}, headers=headers)
-                assert first.status_code == 202, first.text
-                replay = await client.post(path, json={"expected_revision": 1}, headers=headers)
-                assert (
-                    replay.status_code == 202
-                    and replay.json()["command_id"] == first.json()["command_id"]
-                )
-                assert len(await versions(database, order_id)) == 0  # queued-only
-                assert (
-                    await client.post(path, json={"expected_revision": 2}, headers=headers)
-                ).status_code == 409
-                artificial = await create()
-                async with database.sessions() as session, session.begin():
-                    (await session.get(Order, artificial)).phase = "RESEARCH"
-                bypass = await client.post(
-                    f"/api/v1/internal/orders/{artificial}/production/start",
-                    json={"expected_revision": 1},
-                    headers={**headers, "Idempotency-Key": "bypass"},
-                )
-                assert bypass.status_code == 409
-        await process_one_job(settings, provider=provider, order_id=order_id, include_images=False)
-        async with database.sessions() as session:
-            assert (await session.get(Order, order_id)).phase == "AWAITING_RELEASE"
-    finally:
-        from company.persistence.models import AuthSession
-
-        async with database.sessions() as session, session.begin():
-            await session.execute(delete(AuthSession).where(AuthSession.token_hash == owner_hash))
+    assert "/api/v1/internal/orders/{order_id}/production/start" not in app.openapi()["paths"]
+    provider = TypedProductionProvider(wrong_first=False)
+    await process_one_job(settings, provider=provider, order_id=order_id)
+    await accept(database, order_id)
+    await process_one_job(settings, provider=provider, order_id=order_id, include_images=False)
+    async with database.sessions() as session:
+        assert (await session.get(Order, order_id)).phase == "AWAITING_RELEASE"

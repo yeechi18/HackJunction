@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,5 +30,4 @@ class DeliverySnapshot(Base):
     package_key: Mapped[str] = mapped_column(String(100), unique=True)
     package_sha256: Mapped[str] = mapped_column(String(64))
     package_byte_size: Mapped[int] = mapped_column(Integer)
-    is_demo: Mapped[bool] = mapped_column(Boolean)
     delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

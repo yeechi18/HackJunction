@@ -84,7 +84,6 @@ export function NewOrderForm() {
         product_details: productDetails,
         domestic_product_url: String(fields.get("domestic_product_url") ?? "").trim() || null,
         notes: String(fields.get("notes") ?? "").trim() || null,
-        is_demo: fields.get("is_demo") === "on",
       });
       if (submission.current?.body !== body) submission.current = { body, key: crypto.randomUUID() };
       const result = await apiFetch<CreatedOrder>("/orders", { method: "POST", body, headers: csrfHeaders(account.csrf_token), idempotencyKey: submission.current.key });
@@ -135,8 +134,8 @@ export function NewOrderForm() {
       <fieldset className="intake-fields" disabled={!hydrated || busy}>
         <div className="form-section"><div className="form-section-title"><span>01</span><h2>商品名字与明细</h2></div>
           <div className="field"><label htmlFor="product_name">商品名字 <em>必填</em></label><input id="product_name" name="product_name" required maxLength={300} placeholder="例如：桌面理线夹" /></div>
-          <div className="field"><label htmlFor="product_details">商品明细信息 <em>必填</em></label><textarea id="product_details" name="product_details" rows={5} required maxLength={10000} placeholder="例如：硅胶材质，黑色，6个装，单件4×3×2cm，用于整理桌面线缆。先写已知信息，缺少的内容可之后补充。" /><p className="field-help">把已有参数和使用信息写在一起即可，获客 Agent 会继续核实所需细节。</p></div>
-          <div className="field"><label htmlFor="domestic_product_url">国内平台商品链接 <span>选填</span></label><input id="domestic_product_url" name="domestic_product_url" type="url" maxLength={2000} placeholder="https://…（如淘宝、京东、1688商品页）" /><p className="field-help">保存为商品参考链接，请把希望采用的信息一并写在明细中。</p></div>
+          <div className="field"><label htmlFor="product_details">商品明细信息 <em>必填</em></label><textarea id="product_details" name="product_details" rows={5} required maxLength={10000} placeholder="例如：硅胶材质，黑色，6个装，单件4×3×2cm，用于整理桌面线缆。先写已知信息，缺少的内容可之后补充。" /><p className="field-help">把已有参数和使用信息写在一起即可，顾问会结合图片和参考链接分析资料，整理内容方向。</p></div>
+          <div className="field"><label htmlFor="domestic_product_url">国内平台商品链接 <span>选填</span></label><input id="domestic_product_url" name="domestic_product_url" type="url" maxLength={2000} placeholder="https://…（如淘宝、京东、1688商品页）" /><p className="field-help">顾问会尝试读取公开页面；需要登录或验证时，将优先使用你填写的资料和图片。</p></div>
         </div>
         <div className="form-section"><div className="form-section-title"><span>02</span><h2>商品图片与补充说明</h2></div>
           <div className={`${styles.uploadForm} intake-reference`}>
@@ -147,12 +146,11 @@ export function NewOrderForm() {
             {fileError && <p className={styles.error} role="alert">{fileError}</p>}
           </div>
           <div className="field intake-reference"><label htmlFor="notes">补充商品说明与期望卖点 <span>选填</span></label><textarea id="notes" name="notes" rows={4} maxLength={10000} placeholder="已有文案、希望突出的特点，或需要我们特别注意的地方。" /></div>
-          <label className="checkbox-field demo-checkbox"><input type="checkbox" name="is_demo" /><span>这是一份虚构演示订单</span></label><p className="field-help">真实商品资料与演示数据分别记录。</p>
         </div>
         <div className="form-submit-row"><p>订单将保存到你的账号，可从“我的订单”找回。</p><button className="button button-dark" disabled={!hydrated || busy} type="submit">{busy ? "正在保存资料…" : "保存资料，创建订单"}<span aria-hidden="true">↗</span></button></div>
       </fieldset>
     </form>
-      <aside className="intake-aside"><p className="eyebrow">START WITH ONE GOOD PRODUCT.</p><h2>一件商品，<br />一个清楚的开始。</h2><p>首版专注非电子类桌面收纳用品，为 Amazon 美国站准备美式英语内容。</p><ol><li><span>01</span><div><strong>先保存，再补充</strong><p>还没准备好的资料，可以回到订单入口继续补全。</p></div></li><li><span>02</span><div><strong>事实与想法分开</strong><p>已核实的商品属性是文案依据，期望卖点也需要事实支持。</p></div></li><li><span>03</span><div><strong>进度保留在同一处</strong><p>订单入口承载资料与沟通记录，刷新后也能继续查看。</p></div></li></ol><div className="aside-note">资料保存后，获客 Agent 会审查并请求补充；经接单、研究、生成和审校后交付。当前发布仅为模拟模式。</div></aside>
+      <aside className="intake-aside"><p className="eyebrow">START WITH ONE GOOD PRODUCT.</p><h2>一件商品，<br />一个清楚的开始。</h2><p>根据商品本身的特点，为 Amazon 美国站准备美式英语内容。</p><ol><li><span>01</span><div><strong>先保存，再补充</strong><p>还没准备好的资料，可以回到订单入口继续补全。</p></div></li><li><span>02</span><div><strong>事实与想法分开</strong><p>已核实的商品属性是文案依据，期望卖点也需要事实支持。</p></div></li><li><span>03</span><div><strong>进度保留在同一处</strong><p>订单入口承载资料与沟通记录，刷新后也能继续查看。</p></div></li></ol><div className="aside-note">资料保存后，获客顾问会分析资料并提出文案方向；经接单、研究、生成和审校后交付。当前发布仅为模拟模式。</div></aside>
     </div>
   </>;
 }

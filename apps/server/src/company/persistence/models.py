@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -53,14 +52,11 @@ class Order(Base):
     seller_account_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("seller_accounts.id", ondelete="RESTRICT"), index=True
     )
-    seller_name: Mapped[str] = mapped_column(String(200))
-    contact: Mapped[str | None] = mapped_column(String(500))
     product_name: Mapped[str] = mapped_column(String(300))
     product_details: Mapped[str | None] = mapped_column(Text)
     domestic_product_url: Mapped[str | None] = mapped_column(String(2000))
     phase: Mapped[str] = mapped_column(String(32), default="INTAKE")
     revision: Mapped[int] = mapped_column(Integer, default=1)
-    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
     publish_mode: Mapped[str] = mapped_column(String(16), default="simulated")
     pending_command_id: Mapped[UUID | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

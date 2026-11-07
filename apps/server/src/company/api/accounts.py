@@ -225,7 +225,6 @@ def order_view(order: Order) -> AccountOrderView:
         id=order.id,
         product_name=order.product_name,
         phase=order.phase,
-        is_demo=order.is_demo,
         created_at=order.created_at,
         updated_at=order.updated_at,
     )

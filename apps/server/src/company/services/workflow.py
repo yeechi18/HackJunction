@@ -15,6 +15,7 @@ from company.agents.acquisition import inspect_intake
 from company.config import Settings
 from company.domain.facts import canonical_key
 from company.persistence.agent_runs import AgentRun
+from company.persistence.assets import Asset
 from company.persistence.database import Database, checkpoint_conninfo
 from company.persistence.models import (
     Command,
@@ -34,6 +35,7 @@ from company.providers.usage import attach_call, record_call
 from company.services.delivery import DeliveryError, release_version, veto_version
 from company.services.feedback_workflow import classify_feedback
 from company.services.image_workflow import render_version_images
+from company.services.intake_sources import load_intake_sources
 from company.services.model_budget import BudgetedProvider, OrderBudgetExceeded
 from company.services.production import (
     StepResult,
@@ -269,13 +271,28 @@ class WorkflowContext:
                     .limit(12)
                 )
             )
+            references = [
+                {
+                    "id": str(image.id),
+                    "width": image.width,
+                    "height": image.height,
+                    "method": image.method,
+                    "storage_key": image.storage_key,
+                    "sha256": image.sha256,
+                }
+                for image in await session.scalars(
+                    select(Asset)
+                    .where(Asset.order_id == order.id, Asset.kind == "reference")
+                    .order_by(Asset.created_at.desc(), Asset.id)
+                    .limit(3)
+                )
+            ]
             order_input = {
                 "product_name": order.product_name,
                 "product_details": order.product_details,
                 "domestic_product_url": order.domestic_product_url,
                 "facts": [{**fact, "key": canonical_key(fact["key"])} for fact in snapshot.facts],
                 "notes": snapshot.notes,
-                "is_demo": order.is_demo,
                 "messages": [
                     {"role": item.role, "content": item.content} for item in reversed(messages)
                 ],
@@ -297,7 +314,10 @@ class WorkflowContext:
             run_id, input_revision = run.id, order.revision
 
         # No ORM transaction or row lock is held during a model call.
-        result = await inspect_intake(order_input, self._provider("acquisition", "intake"))
+        order_input, image_paths = await load_intake_sources(self.settings, order_input, references)
+        result = await inspect_intake(
+            order_input, self._provider("acquisition", "intake"), image_paths=image_paths
+        )
 
         async with self.database.sessions() as session, session.begin():
             await self._owned_job(session)
@@ -348,9 +368,9 @@ class WorkflowContext:
                     OrderEvent(
                         order_id=order.id,
                         kind="intake_completed",
-                        message="资料审查通过，等待负责人决定接单。"
+                        message="商品初审与文案方向已整理，等待负责人决定接单。"
                         if result.ready_for_acceptance
-                        else "资料仍需补充或核对，请查看获客回复。",
+                        else "商品初审已记录，请查看顾问回复。",
                         payload={
                             "command_id": str(command.id),
                             "run_id": str(run.id),

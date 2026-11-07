@@ -43,11 +43,7 @@ class SimulatedPublisher:
         return PublisherResult(
             status="SIMULATED",
             external_id=record.public_id,
-            listing_url=(
-                f"{self.settings.public_app_url.rstrip('/')}/demo-listings/{record.public_id}"
-                if record.snapshot.get("is_demo") is True
-                else None
-            ),
+            listing_url=None,
         )
 
     async def submit(self, snapshot: dict, *, operation_key: str) -> PublisherResult:

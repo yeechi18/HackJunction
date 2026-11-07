@@ -1,4 +1,4 @@
-"""Small order-scoped support, reported active time and audited retry permissions."""
+"""Small order-scoped support and audited retry permissions."""
 
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -39,18 +39,6 @@ class SupportEntry(Base):
         ForeignKey("messages.id", ondelete="CASCADE"), unique=True
     )
     actor: Mapped[str] = mapped_column(String(16))
-    idempotency_key: Mapped[str] = mapped_column(String(128))
-    request_hash: Mapped[str] = mapped_column(String(64))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-
-
-class ActiveTimeEntry(Base):
-    __tablename__ = "active_time_entries"
-    __table_args__ = (UniqueConstraint("order_id", "idempotency_key"),)
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
-    seconds: Mapped[int] = mapped_column(Integer)
-    reason: Mapped[str] = mapped_column(String(2000))
     idempotency_key: Mapped[str] = mapped_column(String(128))
     request_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

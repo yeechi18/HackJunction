@@ -15,15 +15,12 @@ from company.persistence.models import Command, Job, Message, Order, OrderEvent,
 from company.persistence.production import DeliverableVersion, ProductionStepReceipt, ReviewReport
 from company.persistence.publication import FeedbackRequest, PublishAttempt
 from company.persistence.support import (
-    ActiveTimeEntry,
     RetryPermission,
     SupportEntry,
     SupportTicket,
 )
 from company.schemas.orders import MessageView
 from company.schemas.support import (
-    ActiveTimeInput,
-    ActiveTimeView,
     OrderMetrics,
     RetryInput,
     RetryQueued,
@@ -261,44 +258,6 @@ async def owner_reply(
     return await ticket_view(session, ticket)
 
 
-async def add_active_time(
-    session: AsyncSession,
-    order_id: UUID,
-    body: ActiveTimeInput,
-    key: str | None = None,
-) -> ActiveTimeView:
-    await order_record(session, order_id, lock=True)
-    key = key or str(uuid4())
-    digest = request_hash(body.model_dump())
-    record = await session.scalar(
-        select(ActiveTimeEntry).where(
-            ActiveTimeEntry.order_id == order_id, ActiveTimeEntry.idempotency_key == key
-        )
-    )
-    if record is not None and record.request_hash != digest:
-        raise HTTPException(409, "Idempotency key was already used for different active time.")
-    if record is None:
-        record = ActiveTimeEntry(
-            order_id=order_id,
-            seconds=body.seconds,
-            reason=body.reason,
-            idempotency_key=key,
-            request_hash=digest,
-        )
-        session.add(record)
-        await session.commit()
-    total = await session.scalar(
-        select(func.sum(ActiveTimeEntry.seconds)).where(ActiveTimeEntry.order_id == order_id)
-    )
-    return ActiveTimeView(
-        id=record.id,
-        seconds=record.seconds,
-        reason=record.reason,
-        created_at=record.created_at,
-        owner_active_seconds=total or 0,
-    )
-
-
 async def quality_budget_exhausted(session: AsyncSession, order_id: UUID, command_id: UUID) -> bool:
     feedback = await session.scalar(
         select(FeedbackRequest).where(FeedbackRequest.command_id == command_id)
@@ -522,9 +481,6 @@ async def order_metrics(session: AsyncSession, order_id: UUID) -> OrderMetrics:
         .select_from(FeedbackRequest)
         .where(FeedbackRequest.order_id == order_id)
     )
-    human_seconds = await session.scalar(
-        select(func.sum(ActiveTimeEntry.seconds)).where(ActiveTimeEntry.order_id == order_id)
-    )
     open_tickets = await session.scalar(
         select(func.count())
         .select_from(SupportTicket)
@@ -532,7 +488,6 @@ async def order_metrics(session: AsyncSession, order_id: UUID) -> OrderMetrics:
     )
     return OrderMetrics(
         order_id=order_id,
-        is_demo=order.is_demo,
         publish_mode=order.publish_mode,
         recorded_model_calls=sum(model_call_count(entry) for entry in reported),
         calls_by_role=dict(
@@ -564,10 +519,9 @@ async def order_metrics(session: AsyncSession, order_id: UUID) -> OrderMetrics:
         automatic_rework_candidates=sum(version.round_index > 0 for version in versions),
         failed_reviews=failed_reviews,
         feedback_requests=feedback_count,
-        owner_active_seconds=human_seconds or 0,
         open_support_tickets=open_tickets,
         explanations={
-            "scope": "仅当前订单，is_demo与真实业务分开；模拟发布不等于真实成交。",
+            "scope": "仅当前订单的模型用量及版本记录；模拟发布不等于真实成交。",
             "model_mode": (
                 "offline-fixture为本地测试响应，已知API token为0，不计作真实MiMo调用；"
                 "模式按持久化model标签分类，未返回model的调用列为unknown。"
@@ -585,9 +539,6 @@ async def order_metrics(session: AsyncSession, order_id: UUID) -> OrderMetrics:
             "revisions": (
                 "revision_candidates为初版以外候选版本数；"
                 "automatic_rework仅round_index大于0的版本。"
-            ),
-            "active_time": (
-                "仅累计负责人明确提交的活跃秒数；不将等待、页面打开时长或订单流转时间自动计为工时。"
             ),
         },
     )

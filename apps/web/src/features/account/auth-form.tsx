@@ -12,7 +12,7 @@ const clientReady = () => true;
 const serverReady = () => false;
 
 function validPassword(value: string) {
-  return /^[\x21-\x7e]{8,12}$/.test(value)
+  return /^[\x21-\x7e]{8,18}$/.test(value)
     && [/[A-Za-z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(group => group.test(value)).length >= 2;
 }
 
@@ -27,6 +27,7 @@ export function AccountForm({ register = false, next }: { register?: boolean; ne
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [code, setCode] = useState("");
+  const [passwordLength, setPasswordLength] = useState(0);
   useEffect(() => {
     let active = true;
     void apiFetch<AccountSession>("/seller/auth/session").then(() => { if (active) router.replace(destination); }).catch(() => {});
@@ -59,7 +60,9 @@ export function AccountForm({ register = false, next }: { register?: boolean; ne
     if (busy || sending || !hydrated) return;
     const fields = new FormData(event.currentTarget);
     const password = String(fields.get("password") ?? "");
-    if (register && !validPassword(password)) { setError("密码需要8–12位，字母、数字、特殊符号至少包含两类，不含空格。"); return; }
+    if (register && password.length > 18) { setError("密码最多18位，请缩短后重试。"); return; }
+    if (register && !validPassword(password)) { setError("密码需要8–18位，字母、数字、特殊符号至少包含两类，不含空格。"); return; }
+    if (register && String(fields.get("password_confirm") ?? "").length > 18) { setError("确认密码最多18位，请缩短后重试。"); return; }
     if (register && password !== String(fields.get("password_confirm") ?? "")) { setError("两次输入的密码不一致。"); return; }
     setBusy(true); setError("");
     try {
@@ -84,10 +87,11 @@ export function AccountForm({ register = false, next }: { register?: boolean; ne
       {register && <div className="field"><label htmlFor="account-name">你的称呼</label><input id="account-name" name="display_name" required maxLength={200} autoComplete="name" /></div>}
       <div className="field"><label htmlFor="account-email">邮箱</label><input ref={emailInput} id="account-email" type="email" name="email" required maxLength={254} autoComplete="username" disabled={sending} onChange={() => { setCode(""); setNotice(""); }} />{register && <p className="field-help">使用你能收信的邮箱，注册时需要验证。</p>}</div>
       {register && <div className="field"><label htmlFor="account-code">邮箱验证码</label><div className="verification-row"><input id="account-code" name="verification_code" required inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))} /><button className="button button-outline" type="button" disabled={!hydrated || sending || cooldown > 0} onClick={sendCode}>{sending ? "正在发送…" : cooldown ? `${cooldown}秒后重发` : "获取验证码"}</button></div><p className="field-help">输入邮箱收到的6位数字。</p></div>}
-      <div className="field"><label htmlFor="account-password">密码</label><input id="account-password" type="password" name="password" required minLength={register ? 8 : 1} maxLength={register ? 12 : 128} autoComplete={register ? "new-password" : "current-password"} />{register && <p className="field-help">8–12位，字母、数字、特殊符号（如 !@#$%）至少包含两类，不含空格。</p>}</div>
-      {register && <div className="field"><label htmlFor="account-confirm">确认密码</label><input id="account-confirm" type="password" name="password_confirm" required minLength={8} maxLength={12} autoComplete="new-password" /></div>}
+      <div className="field"><label htmlFor="account-password">密码</label><input id="account-password" type="password" name="password" required minLength={register ? 8 : 1} maxLength={register ? undefined : 128} autoComplete={register ? "new-password" : "current-password"} onChange={event => setPasswordLength(event.target.value.length)} aria-invalid={register && passwordLength > 18 ? true : undefined} />{register && <><p className="field-help">8–18位，字母、数字、特殊符号（如 !@#$%）至少包含两类，不含空格。</p>{passwordLength > 18 && <p className="form-notice notice-error" role="alert">已输入{passwordLength}位，密码最多18位，请缩短后重试。</p>}</>}</div>
+      {register && <div className="field"><label htmlFor="account-confirm">确认密码</label><input id="account-confirm" type="password" name="password_confirm" required minLength={8} autoComplete="new-password" /></div>}
       {notice && <p className="form-notice notice-success" role="status">{notice}</p>}
       {error && <ErrorNotice>{error}</ErrorNotice>}
+      {!register && error === "邮箱或密码不正确。" && <details className="field-help"><summary>旧版账号的密码提示</summary><p>旧版注册页可能只保存了长密码的前12位。如果当时输入超过12位，请先尝试原密码的前12位；现在新注册账号支持最多18位。</p></details>}
       <button className="button button-dark" type="submit" disabled={!hydrated || busy || sending}>{busy ? "正在处理…" : register ? "验证邮箱并注册" : "登录卖家账号"}<span aria-hidden="true">↗</span></button>
     </fieldset>
     <p className="subtle-note">{register ? "已有账号？" : "还没有账号？"}<Link href={`${register ? "/seller/login" : "/seller/register"}?next=${encodeURIComponent(destination)}`}>{register ? "前往登录" : "注册卖家账号"} ↗</Link></p>

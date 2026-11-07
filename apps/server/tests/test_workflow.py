@@ -61,10 +61,9 @@ async def make_order(database: Database, settings: Settings, *, complete: bool) 
             session,
             settings,
             CreateOrder(
-                seller_name="M3 fictional seller",
+                product_details="Known test product specifications.",
                 product_name="虚构桌面理线夹",
                 facts=product_facts(complete=complete),
-                is_demo=True,
             ),
         )
     return created.id
@@ -102,7 +101,7 @@ async def test_intake_wait_supplement_and_accept_use_persistent_graph(
         assert await process_one_job(
             settings, include_production=False, provider=provider, order_id=order_id
         )
-        assert await read_phase(database, order_id) == "NEEDS_INFO"
+        assert await read_phase(database, order_id) == "AWAITING_ACCEPTANCE"
         assert not await process_one_job(
             settings, include_production=False, provider=provider, order_id=order_id
         )
@@ -221,7 +220,7 @@ async def test_result_committed_before_checkpoint_failure_is_not_generated_twice
     async def fail_after_intake(self, config, checkpoint, metadata, new_versions):
         if (
             not fault["injected"]
-            and checkpoint.get("channel_values", {}).get("phase") == "NEEDS_INFO"
+            and checkpoint.get("channel_values", {}).get("phase") == "AWAITING_ACCEPTANCE"
         ):
             fault["injected"] = True
             raise RuntimeError("injected failure must not appear in operator diagnostics")
@@ -245,7 +244,7 @@ async def test_result_committed_before_checkpoint_failure_is_not_generated_twice
         )
         assert provider.calls == 1
         assert await receipt_counts(database, order_id) == (1, 1)
-        assert await read_phase(database, order_id) == "NEEDS_INFO"
+        assert await read_phase(database, order_id) == "AWAITING_ACCEPTANCE"
     finally:
         await database.close()
 

@@ -40,7 +40,7 @@ function AssetCard({ asset, internal, busy, onDelete }: { asset: AssetView; inte
       <p className={styles.dimensions}>{asset.width} × {asset.height} px <span>·</span> {formatBytes(asset.byte_size)}</p>
       <p className={styles.source}>{sourceLabel(asset)}</p>
       <div className={styles.assetFooter}><span>{asset.media_type.replace("image/", "").toUpperCase()}{internal && asset.version_id ? ` · 版本 ${asset.version_id.slice(0, 8)}` : ""}</span><a href={asset.url} target="_blank" rel="noreferrer">查看图片 ↗</a></div>
-      {asset.kind === "reference" && <div className={styles.deleteActions}>
+      {!internal && asset.kind === "reference" && <div className={styles.deleteActions}>
         {confirming ? <><p>确认删除这张参考图？删除后可重新上传。</p><button type="button" disabled={busy} onClick={() => void onDelete(asset)}>确认删除</button><button type="button" disabled={busy} onClick={() => setConfirming(false)}>取消</button></>
           : <button type="button" disabled={busy || !asset.can_delete} onClick={() => setConfirming(true)}>删除参考图</button>}
         {!asset.can_delete && asset.deletion_block_reason && <p>{asset.deletion_block_reason}</p>}
@@ -128,8 +128,8 @@ function AssetsWorkspace({ orderId, csrfToken, internal = false }: Props) {
 
   return <section className={`surface workspace-panel ${styles.panel}`} aria-labelledby={`${panelId}-title`}>
     <div className="panel-heading"><h2 id={`${panelId}-title`}>{internal ? "商品图片与参考素材" : "商品参考图"}</h2><span>{assets ? `${assets.length} 张可见图片` : "实际图片文件"}</span></div>
-    <p className={styles.intro}>上传能够准确呈现商品的现有图片，作为后续图片制作的参考。</p>
-    <form className={styles.uploadForm} onSubmit={upload}>
+    <p className={styles.intro}>{internal ? "此处只读查看商家提交的图片及版本素材；需要调整时请联系商家。" : "上传能够准确呈现商品的现有图片，作为分析与内容制作的参考。"}</p>
+    {!internal && <form className={styles.uploadForm} onSubmit={upload}>
       <label className={styles.fileLabel} htmlFor={`${panelId}-file`}>上传商品参考图</label>
       <input ref={fileInput} id={`${panelId}-file`} className={styles.fileInput} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={chooseFile} aria-describedby={`${panelId}-limits`} />
       <p id={`${panelId}-limits`} className={styles.limits}>支持 PNG、JPEG、WebP，单张不超过 10 MiB。</p>
@@ -137,10 +137,10 @@ function AssetsWorkspace({ orderId, csrfToken, internal = false }: Props) {
       <div className={styles.uploadActions}><button className="button button-dark button-small" type="submit" disabled={busy || !file || Boolean(validateFile(file))}>{busy ? "正在上传…" : "上传参考图"}<span aria-hidden="true">↗</span></button>{file && <button className="text-button" type="button" disabled={busy} onClick={clearFile}>清除选择</button>}</div>
       {uploadError && <p className={styles.error} role="alert">{uploadError}</p>}
       {uploadNotice && <p className={styles.notice} role="status">{uploadNotice}</p>}
-    </form>
+    </form>}
     <div className={styles.listHeading}><span>{internal ? "本单已保存素材" : "本单可见图片"}</span><button className="text-button" type="button" onClick={() => setRevision(current => current + 1)}>刷新 ↻</button></div>
     {loadError && <p className={styles.error} role="alert">{loadError}{assets ? " 当前仍显示最近一次成功读取的图片。" : ""}</p>}
-    {!assets && !loadError ? <p className={styles.empty} role="status">正在读取图片…</p> : assets?.length ? <div className={styles.assetGrid}>{assets.map(asset => <AssetCard key={asset.id} asset={asset} internal={internal} busy={busy} onDelete={removeReference} />)}</div> : !loadError && <p className={styles.empty}>还没有可见图片，先上传一张商品参考图。</p>}
+    {!assets && !loadError ? <p className={styles.empty} role="status">正在读取图片…</p> : assets?.length ? <div className={styles.assetGrid}>{assets.map(asset => <AssetCard key={asset.id} asset={asset} internal={internal} busy={busy} onDelete={removeReference} />)}</div> : !loadError && <p className={styles.empty}>尚无可查看的图片。</p>}
   </section>;
 }
 

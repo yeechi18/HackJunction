@@ -26,7 +26,6 @@ from company.providers.publishers.simulated import SimulatedPublisher
 from company.schemas.commands import DecisionInput
 from company.schemas.publication import ConfirmationInput, FeedbackInput
 from company.services.orders import enqueue_decision
-from company.services.orders import summary as order_summary
 from company.services.production import accepted_revision
 from company.services.publication import PublicationError, queue_confirmation, queue_feedback
 from company.services.workflow import process_one_job
@@ -384,35 +383,25 @@ async def test_feedback_classification_receipt_is_reused_after_checkpoint_failur
     assert len(await candidates(database, order_id)) == 2
 
 
-async def test_blocked_incomplete_snapshot_can_be_completed_but_old_delivery_cannot_be_confirmed(
+async def test_optional_attribute_omission_does_not_block_revision_or_revalidate_old_delivery(
     bundle_context,
 ):
     settings, database, order_id, provider, old = await delivered_base(bundle_context)
     async with database.sessions() as session:
         base = await session.get(InputSnapshot, old.input_snapshot_id)
-        complete = [dict(fact) for fact in base.facts]
-    next(fact for fact in complete if fact["key"] == "pack_quantity")["value"] = "4"
-    incomplete = [fact for fact in complete if fact["key"] != "use_cases"]
-    blocked = await feedback(
-        database, order_id, old, "数量改为4，其他稍后补全。", fact_updates=incomplete
+        updates = [dict(fact) for fact in base.facts if fact["key"] != "use_cases"]
+    next(fact for fact in updates if fact["key"] == "pack_quantity")["value"] = "4"
+    queued = await feedback(
+        database, order_id, old, "数量改为4，未提供的适用范围不写入文案。", fact_updates=updates
     )
     assert await process_one_job(settings, provider=provider, order_id=order_id)
-    assert len(await candidates(database, order_id)) == 1
+    previous, new = await candidates(database, order_id)
+    assert new.draft["title"].startswith("4-Pack") and new.parent_version_id == previous.id
     async with database.sessions() as session:
-        request = await session.get(FeedbackRequest, blocked.feedback_id)
-        assert request.status == "waiting_for_seller" and request.resulting_revision == 2
-        public = await order_summary(session, await session.get(Order, order_id))
-        assert public.allowed_actions == ["feedback"]
+        request = await session.get(FeedbackRequest, queued.feedback_id)
+        assert request.classification["actionable"] and request.resulting_revision == 2
     with pytest.raises(PublicationError):
         await confirm(database, settings, order_id, old, revision=2)
-    queued = await feedback(
-        database, order_id, old, "补齐完整参数并确认数量为4。", fact_updates=complete, revision=2
-    )
-    assert await process_one_job(settings, provider=provider, order_id=order_id)
-    old, new = await candidates(database, order_id)
-    assert new.draft["title"].startswith("4-Pack") and new.parent_version_id == old.id
-    async with database.sessions() as session:
-        assert (await session.get(FeedbackRequest, queued.feedback_id)).resulting_revision == 3
 
 
 async def test_open_human_ticket_pauses_intake_before_any_model_call(bundle_context):

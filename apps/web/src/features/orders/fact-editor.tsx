@@ -4,8 +4,10 @@ export function emptyFacts(): ProductFact[] {
   return Object.keys(factLabels).map(key => ({ key, value: "", unit: key === "pack_quantity" ? "pieces" : "", confirmed: false }));
 }
 
-export function editableFacts(existing: ProductFact[]): ProductFact[] {
-  return [...existing.map(fact => ({ ...fact })), ...emptyFacts().filter(fact => !existing.some(item => item.key === fact.key))];
+export function editableFacts(existing: ProductFact[], suggestions: ProductFact[] = []): ProductFact[] {
+  const candidates = suggestions.filter(fact => !existing.some(item => item.key === fact.key && item.value.trim()));
+  const merged = [...existing.filter(fact => fact.value.trim() || !candidates.some(item => item.key === fact.key)), ...candidates.map(({ key, value, unit }) => ({ key, value, unit, confirmed: false }))];
+  return [...merged.map(fact => ({ ...fact })), ...emptyFacts().filter(fact => !merged.some(item => item.key === fact.key))];
 }
 
 export function FactEditor({ facts, onChange, disabled = false }: { facts: ProductFact[]; onChange: (facts: ProductFact[]) => void; disabled?: boolean }) {

@@ -3,17 +3,16 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { AccessError, ErrorNotice, LoadingPanel } from "@/components/async-feedback";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
-import { editableFacts, FactEditor, normalizedFacts } from "./fact-editor";
 import { EventsPanel, FactsPanel, MessagesPanel, OrderHeading, WorkflowNotice } from "./order-panels";
 import type { Message, Order } from "./types";
 import { useWorkspace } from "./use-workspace";
+import { IntakeAnalysisPanel } from "./intake-analysis";
 import { ReferenceAssetsPanel } from "./reference-assets-panel";
 import { DeliverablesPanel } from "./deliverables-panel";
 import { SellerSupportPanel } from "@/features/operations/support-panel";
 import { SellerPublicationPanel } from "./seller-publication-panel";
 
 function SupplementForm({ order, csrfToken, onSaved, onCancel, refresh }: { order: Order; csrfToken: string; onSaved: () => void; onCancel: () => void; refresh: () => void }) {
-  const [facts, setFacts] = useState(() => editableFacts(order.facts));
   const [notes, setNotes] = useState(order.notes ?? "");
   const [baseRevision, setBaseRevision] = useState(order.revision);
   const [busy, setBusy] = useState(false);
@@ -26,7 +25,7 @@ function SupplementForm({ order, csrfToken, onSaved, onCancel, refresh }: { orde
     if (busy || stale || !allowed) return;
     setBusy(true); setError("");
     try {
-      await apiFetch<Order>(`/orders/${order.id}/supplements`, { method: "POST", headers: csrfHeaders(csrfToken), body: JSON.stringify({ expected_revision: baseRevision, facts: normalizedFacts(facts), notes: notes.trim() || null }) });
+      await apiFetch<Order>(`/orders/${order.id}/supplements`, { method: "POST", headers: csrfHeaders(csrfToken), body: JSON.stringify({ expected_revision: baseRevision, notes: notes.trim() || null }) });
       onSaved();
     } catch (caught) {
       setError(errorMessage(caught));
@@ -34,7 +33,7 @@ function SupplementForm({ order, csrfToken, onSaved, onCancel, refresh }: { orde
     } finally { setBusy(false); }
   }
 
-  return <form className="surface workspace-panel supplement-form" onSubmit={submit}><div className="panel-heading"><h2>补充商品资料</h2><button className="text-button" type="button" onClick={onCancel} disabled={busy}>收起 ↑</button></div><p className="field-help">以下为当前全部事实。请修改或移除不适用的候选，并分别核实保留项；保存后形成完整新版本。</p>{stale && <div className="form-notice notice-warning">订单已有更新。请载入最新资料，再继续编辑；这将替换当前未保存内容。<button className="text-button" type="button" onClick={() => { setFacts(editableFacts(order.facts)); setNotes(order.notes ?? ""); setBaseRevision(order.revision); setError(""); }}>载入最新资料 ↻</button></div>}{!allowed && <div className="form-notice notice-warning">订单阶段已更新，当前暂不接受资料修改。你的未保存草稿仍保留在表单中。</div>}<FactEditor facts={facts} onChange={setFacts} disabled={busy || stale || !allowed} /><div className="field"><label htmlFor="supplement-notes">补充说明</label><textarea id="supplement-notes" value={notes} onChange={event => setNotes(event.target.value)} rows={4} maxLength={10000} disabled={busy || stale || !allowed} /></div>{error && <ErrorNotice>{error}</ErrorNotice>}<div className="form-submit-row"><p>基于资料版本 {baseRevision}</p><button className="button button-dark" type="submit" disabled={busy || stale || !allowed}>{busy ? "正在保存…" : "保存补充资料"}<span aria-hidden="true">↗</span></button></div></form>;
+  return <form className="surface workspace-panel supplement-form" onSubmit={submit}><div className="panel-heading"><h2>补充商品资料</h2><button className="text-button" type="button" onClick={onCancel} disabled={busy}>收起 ↑</button></div><p className="field-help">如果需要更正商品描述或表达偏好，直接补充说明即可，无需填写固定参数表。</p>{stale && <div className="form-notice notice-warning">订单已有更新。请载入最新资料，再继续编辑；这将替换当前未保存内容。<button className="text-button" type="button" onClick={() => { setNotes(order.notes ?? ""); setBaseRevision(order.revision); setError(""); }}>载入最新资料 ↻</button></div>}{!allowed && <div className="form-notice notice-warning">订单阶段已更新，当前暂不接受资料修改。你的未保存草稿仍保留在表单中。</div>}<div className="field"><label htmlFor="supplement-notes">补充说明</label><textarea id="supplement-notes" value={notes} onChange={event => setNotes(event.target.value)} rows={4} maxLength={10000} disabled={busy || stale || !allowed} /></div>{error && <ErrorNotice>{error}</ErrorNotice>}<div className="form-submit-row"><p>基于资料版本 {baseRevision}</p><button className="button button-dark" type="submit" disabled={busy || stale || !allowed}>{busy ? "正在保存…" : "保存补充资料"}<span aria-hidden="true">↗</span></button></div></form>;
 }
 
 function MessageComposer({ order, csrfToken, onSent }: { order: Order; csrfToken: string; onSent: () => void }) {
@@ -72,5 +71,5 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
   if (accessDenied) return <AccessError />;
   if (!data) return error ? <div><ErrorNotice>{error}</ErrorNotice><AccessError /><button className="button button-outline" type="button" onClick={refresh}>重新连接</button></div> : <LoadingPanel message="正在验证卖家账号并读取订单…" />;
   const { order, messages, events, csrfToken, checkedAt } = data;
-  return <><OrderHeading order={order} /><div className="workspace-toolbar"><p>最近更新 {checkedAt} · 进度每 {pollIntervalMs / 1000} 秒刷新</p><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>{error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}{notice && <div className="form-notice notice-success" role="status">{notice}</div>}<WorkflowNotice order={order} /><div className="workspace-grid"><div className="workspace-primary"><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /><SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} /><FactsPanel order={order} /><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />{editing ? <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => { setEditing(false); setNotice("补充资料已保存，等待重新审查。"); refresh(); }} onCancel={() => setEditing(false)} refresh={refresh} /> : order.allowed_actions.includes("supplement") && <button type="button" className="supplement-trigger" onClick={() => { setEditing(true); setNotice(""); }}><span><strong>还有资料要补充？</strong><small>补齐尺寸、确认事实，或调整商品说明。</small></span><span>补充商品资料 ↗</span></button>}<SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><MessagesPanel messages={messages}><MessageComposer order={order} csrfToken={csrfToken} onSent={refresh} /></MessagesPanel></div><aside className="workspace-secondary"><EventsPanel events={events} /><div className="workspace-side-note"><strong>你的专属订单入口</strong><p>订单已保存在你的卖家账号中。下次登录后，从“我的订单”即可查看进度和交付内容。</p></div></aside></div></>;
+  return <><OrderHeading order={order} /><div className="workspace-toolbar"><p>最近更新 {checkedAt} · 进度每 {pollIntervalMs / 1000} 秒刷新</p><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>{error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}{notice && <div className="form-notice notice-success" role="status">{notice}</div>}<WorkflowNotice order={order} /><div className="workspace-grid"><div className="workspace-primary"><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /><SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} /><FactsPanel order={order} /><section className="surface workspace-panel"><IntakeAnalysisPanel order={order} /></section><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />{editing ? <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => { setEditing(false); setNotice("补充资料已保存，等待重新审查。"); refresh(); }} onCancel={() => setEditing(false)} refresh={refresh} /> : order.allowed_actions.includes("supplement") && <button type="button" className="supplement-trigger" onClick={() => { setEditing(true); setNotice(""); }}><span><strong>还有资料要补充？</strong><small>补齐尺寸、确认事实，或调整商品说明。</small></span><span>补充商品资料 ↗</span></button>}<SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><MessagesPanel messages={messages}><MessageComposer order={order} csrfToken={csrfToken} onSent={refresh} /></MessagesPanel></div><aside className="workspace-secondary"><EventsPanel events={events} /><div className="workspace-side-note"><strong>你的专属订单入口</strong><p>订单已保存在你的卖家账号中。下次登录后，从“我的订单”即可查看进度和交付内容。</p></div></aside></div></>;
 }

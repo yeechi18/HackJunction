@@ -27,7 +27,7 @@ class AccountLogin(EmailAddress):
 
 
 class AccountRegistration(AccountLogin):
-    password: SecretStr = Field(min_length=8, max_length=12)
+    password: SecretStr = Field(min_length=8, max_length=18)
     display_name: str = Field(min_length=1, max_length=200)
     verification_code: SecretStr = Field(min_length=6, max_length=6)
 
@@ -77,7 +77,6 @@ class AccountOrderView(BaseModel):
     id: UUID
     product_name: str
     phase: str
-    is_demo: bool
     created_at: datetime
     updated_at: datetime
 

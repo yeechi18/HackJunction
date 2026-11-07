@@ -24,6 +24,7 @@ from company.persistence.models import (
     Order,
     OrderAccess,
     OrderEvent,
+    SellerAccount,
     now,
 )
 from company.persistence.production import DeliverableVersion
@@ -150,17 +151,32 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
                     actions.append("confirm_publish")
             except PublicationError:
                 pass
+    intake = await database.scalar(
+        select(AgentRun)
+        .where(
+            AgentRun.order_id == order.id,
+            AgentRun.input_revision == order.revision,
+            AgentRun.role == "acquisition",
+            AgentRun.status == "succeeded",
+        )
+        .order_by(AgentRun.finished_at.desc())
+        .limit(1)
+    )
     return OrderSummary(
         id=order.id,
         phase=order.phase,
         revision=order.revision,
-        seller_name=order.seller_name,
+        seller_name=(await database.get(SellerAccount, order.seller_account_id)).display_name
+        if order.seller_account_id
+        else "未关联账号",
         product_name=order.product_name,
         product_details=order.product_details,
         domestic_product_url=order.domestic_product_url,
         facts=snapshot.facts,
+        intake_analysis=intake.result
+        if intake and (intake.result or {}).get("strategy_version") == "evidence-intake-v1"
+        else None,
         notes=snapshot.notes,
-        is_demo=order.is_demo,
         created_at=order.created_at,
         updated_at=order.updated_at,
         pending_command_id=order.pending_command_id,
@@ -199,7 +215,9 @@ async def internal_detail(database: AsyncSession, order: Order) -> InternalOrder
     ).all()
     return InternalOrder(
         **public.model_dump(),
-        contact=order.contact,
+        contact=(await database.get(SellerAccount, order.seller_account_id)).email
+        if order.seller_account_id
+        else None,
         input_snapshots=[
             SnapshotView(
                 id=item.id,
@@ -258,13 +276,10 @@ async def create_order(
     seller_account_id: UUID | None = None,
 ) -> CreatedOrder:
     order = Order(
-        seller_name=body.seller_name,
         seller_account_id=seller_account_id,
-        contact=body.contact,
         product_name=body.product_name,
         product_details=body.product_details,
         domestic_product_url=body.domestic_product_url,
-        is_demo=body.is_demo,
         publish_mode=settings.publish_mode,
     )
     database.add(order)
@@ -472,3 +487,69 @@ async def enqueue_decision(
     event(database, order_id, "decision_queued", "负责人操作已排队，等待工作流处理；尚未生效。")
     await database.commit()
     return QueuedCommand(command_id=command.id, order_id=order_id, revision=order.revision)
+
+
+async def refresh_intake_sources(
+    database: AsyncSession, order_id: UUID, *, reason: str = "reference_updated"
+) -> None:
+    """A changed reference set invalidates an in-flight review without changing old snapshots."""
+    order = await load_order(database, order_id, lock=True)
+    if order.phase not in {"INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"}:
+        await database.rollback()
+        return
+    # Before the first job starts, it will already read the newest reference set.
+    if order.phase == "INTAKE":
+        pending = await database.scalar(
+            select(Command)
+            .where(
+                Command.order_id == order_id,
+                Command.kind == "START",
+                Command.expected_revision == order.revision,
+            )
+            .limit(1)
+        )
+        if pending:
+            queued = await database.scalar(
+                select(Job.id).where(Job.command_id == pending.id, Job.status == "queued").limit(1)
+            )
+            started = await database.scalar(
+                select(AgentRun.id).where(AgentRun.command_id == pending.id).limit(1)
+            )
+            if queued and started is None:
+                await database.rollback()
+                return
+    previous = await latest_snapshot(database, order_id)
+    order.revision += 1
+    order.phase, order.updated_at = "INTAKE", now()
+    database.add(
+        InputSnapshot(
+            order_id=order_id,
+            revision=order.revision,
+            facts=previous.facts,
+            notes=previous.notes,
+            source="intake_strategy_update"
+            if reason == "strategy_updated"
+            else "seller_reference_update",
+        )
+    )
+    command = Command(
+        order_id=order_id,
+        kind="SUPPLEMENT",
+        expected_revision=order.revision,
+        idempotency_key=f"system:reference-review:{order.revision}",
+        request_hash=hashlib.sha256(f"reference:{order.revision}".encode()).hexdigest(),
+        payload={},
+    )
+    database.add(command)
+    await database.flush()
+    database.add(Job(order_id=order_id, command_id=command.id, kind="RESUME"))
+    order.pending_command_id = command.id
+    event(
+        database,
+        order_id,
+        "intake_review_queued",
+        "已安排按新版初审策略重新分析现有商品资料。"
+        if reason == "strategy_updated"
+        else "参考素材已更新，顾问将结合新图重新分析。",
+    )
+    await database.commit()

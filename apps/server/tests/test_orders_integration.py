@@ -59,11 +59,9 @@ async def context(postgres_test_settings: Settings):
                     settings,
                     CreateOrder(
                         **{
-                            "seller_name": "Test Seller",
                             "product_name": "Fictional cable clips",
-                            "contact": "private@example.invalid",
+                            "product_details": "Known test specifications",
                             "facts": facts or [],
-                            "is_demo": True,
                         }
                     ),
                 )

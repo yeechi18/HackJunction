@@ -26,25 +26,21 @@ MAX_MULTIPART_BYTES = MAX_IMAGE_BYTES + 256 * 1024
 
 async def _write_access(request: Request, database: DB, settings: Configuration, order_id: UUID):
     check_origin(request, settings)
-    owner_error = None
-    owner_token = request.cookies.get(OWNER_COOKIE)
-    if owner_token:
-        try:
-            await get_session(database, owner_token, "owner")
-            check_csrf(request, settings, owner_token)
-            return "owner"
-        except HTTPException as error:
-            if error.status_code not in {401, 403}:
-                raise
-            owner_error = error
     try:
         seller_token, _ = await seller_order_session(request, database, order_id)
-        check_csrf(request, settings, seller_token)
-        return "seller"
     except HTTPException:
-        if owner_error is not None and owner_error.status_code == 403:
-            raise owner_error from None
+        if request.cookies.get(OWNER_COOKIE):
+            try:
+                await get_session(database, request.cookies.get(OWNER_COOKIE), "owner")
+            except HTTPException:
+                pass
+            else:
+                raise HTTPException(
+                    403, "Only the owning seller can change product references."
+                ) from None
         raise
+    check_csrf(request, settings, seller_token)
+    return "seller"
 
 
 async def _bounded_upload(request: Request) -> tuple[bytes, str | None]:
@@ -102,7 +98,9 @@ async def upload(order_id: UUID, request: Request, database: DB, settings: Confi
     data, content_type = await _bounded_upload(request)
     result = await assets.save_reference_asset(database, settings, order_id, data, content_type)
     from company.services.image_workflow import queue_image_resume
+    from company.services.orders import refresh_intake_sources
 
+    await refresh_intake_sources(database, order_id)
     await queue_image_resume(database, order_id, result.id)
     return result
 
@@ -119,6 +117,9 @@ async def delete_reference(
 ) -> None:
     await _write_access(request, database, settings, order_id)
     await assets.delete_reference_asset(database, settings, order_id, asset_id)
+    from company.services.orders import refresh_intake_sources
+
+    await refresh_intake_sources(database, order_id)
 
 
 @router.get("/{order_id}/assets/{asset_id}")

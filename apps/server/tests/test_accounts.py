@@ -20,8 +20,6 @@ PASSWORD = "Account12!"
 ORDER = {
     "product_details": "Fictional silicone cable clips, known material only.",
     "product_name": "Fictional clips",
-    "facts": [],
-    "is_demo": True,
 }
 
 
@@ -442,7 +440,6 @@ async def test_account_identity_is_automatic_and_product_input_persists(accounts
         "product_details": "硅胶材质，黑色，6个装，单件4×3×2cm。",
         "domestic_product_url": "https://item.jd.com/100000000000.html",
         "notes": "希望突出桌面整洁，不夸大防水效果。",
-        "is_demo": True,
     }
     response = await customer.post(
         "/api/v1/orders", json=payload, headers={"X-CSRF-Token": account["csrf_token"]}
@@ -457,7 +454,12 @@ async def test_account_identity_is_automatic_and_product_input_persists(accounts
     internal = (await owner.get(f"/api/v1/internal/orders/{identifier}")).json()
     assert internal["seller_name"] == account["display_name"]
     assert internal["contact"] == account["email"]
-    for forged in [{"seller_name": "Different Seller"}, {"contact": "other@example.invalid"}]:
+    for forged in [
+        {"seller_name": "Different Seller"},
+        {"contact": "other@example.invalid"},
+        {"is_demo": True},
+        {"facts": []},
+    ]:
         rejected = await customer.post(
             "/api/v1/orders",
             json={**payload, **forged},
@@ -474,3 +476,45 @@ async def test_account_identity_is_automatic_and_product_input_persists(accounts
             saved = (await visitor.get(f"/api/v1/orders/{identifier}")).json()
             assert saved["product_details"] == payload["product_details"]
             assert saved["domestic_product_url"] == payload["domestic_product_url"]
+
+
+async def test_registration_preserves_all_18_chars_and_rejects_19_without_consuming_code(accounts):
+    _, app, client, _, _, request_code = accounts
+    customer = await client()
+    email = f"long-password-{uuid4().hex}@example.invalid"
+    password = "Ab123456789!xyzABC"
+    assert len(password) == 18
+    code = await request_code(customer, email)
+    body = {
+        "email": email,
+        "display_name": "Password length test",
+        "password": password + "D",
+        "verification_code": code,
+    }
+    rejected = await customer.post("/api/v1/seller/auth/register", json=body)
+    assert rejected.status_code == 422 and password not in rejected.text
+    async with app.state.database.sessions() as db:
+        assert await db.scalar(select(SellerAccount).where(SellerAccount.email == email)) is None
+        assert (await db.get(EmailVerification, email)).consumed_at is None
+    response = await customer.post(
+        "/api/v1/seller/auth/register", json={**body, "password": password}
+    )
+    assert response.status_code == 201
+    async with app.state.database.sessions() as db:
+        account = await db.get(SellerAccount, UUID(response.json()["id"]))
+        assert PasswordHash.recommended().verify(password, account.password_hash)
+        assert not PasswordHash.recommended().verify(password[:12], account.password_hash)
+    assert (
+        await customer.post(
+            "/api/v1/seller/auth/logout", headers={"X-CSRF-Token": response.json()["csrf_token"]}
+        )
+    ).status_code == 204
+    for incorrect in [password[:12], password[:-1] + "D", password + "D"]:
+        failed = await customer.post(
+            "/api/v1/seller/auth/login", json={"email": email, "password": incorrect}
+        )
+        assert failed.status_code == 401
+    restored = await customer.post(
+        "/api/v1/seller/auth/login", json={"email": email, "password": password}
+    )
+    assert restored.status_code == 200 and restored.json()["id"] == response.json()["id"]

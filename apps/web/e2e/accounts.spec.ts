@@ -33,7 +33,6 @@ test("注册账号建单、退出重新登录找回订单，其他卖家不能�
   await expect(page).toHaveURL(/\/orders\/new$/);
   await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶桌面理线夹，参数待核实。");
   await page.getByLabel(/商品名字/).fill(product);
-  await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   await expect(page.getByRole("heading", { name: /资料已保存/ })).toBeVisible();
   const privateUrl = await page.getByLabel("私有订单链接").inputValue();
@@ -69,4 +68,47 @@ test("注册账号建单、退出重新登录找回订单，其他卖家不能�
   await page.goto(privateUrl);
   await expect(page.getByRole("heading", { name: "暂时无法打开这份订单" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
+});
+
+test("注册密码18位完整保存，19位明确拒绝，退出后仍可用完整密码登录", async ({ page, browser, baseURL }) => {
+  const email = `length-${randomUUID()}@example.invalid`;
+  const password = `A1!${randomBytes(8).toString("hex").slice(0, 15)}`;
+  expect(password).toHaveLength(18);
+  const tooLong = password + "Z";
+  let registrations = 0;
+  page.on("request", request => { if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/seller/auth/register") registrations++; });
+  await page.goto("/seller/register");
+  await page.getByLabel("你的称呼", { exact: true }).fill("长度验收卖家");
+  await page.getByLabel("邮箱", { exact: true }).fill(email);
+  await page.getByLabel("密码", { exact: true }).pressSequentially(tooLong);
+  await page.getByLabel("确认密码", { exact: true }).pressSequentially(tooLong);
+  await expect(page.getByLabel("密码", { exact: true })).toHaveValue(tooLong);
+  await expect(page.getByLabel("确认密码", { exact: true })).toHaveValue(tooLong);
+  await page.getByLabel("邮箱验证码", { exact: true }).fill("000000");
+  await page.getByRole("button", { name: "验证邮箱并注册", exact: true }).click();
+  await expect(page.getByText("密码最多18位，请缩短后重试。", { exact: true })).toBeVisible();
+  expect(registrations).toBe(0);
+  await page.getByLabel("密码", { exact: true }).fill(password);
+  await page.getByLabel("确认密码", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "获取验证码", exact: true }).click();
+  await expect(page.getByText(/验证码已发送/)).toBeVisible();
+  await page.getByLabel("邮箱验证码", { exact: true }).fill(await readEmailCode(email));
+  await page.getByRole("button", { name: "验证邮箱并注册", exact: true }).click();
+  await expect(page).toHaveURL(/\/seller\/orders$/);
+  await page.getByRole("button", { name: /退出卖家账号/ }).click();
+  await expect(page).toHaveURL(/\/seller\/login$/);
+  const context = await browser.newContext({ baseURL });
+  try {
+    const login = await context.newPage();
+    await login.goto("/seller/login");
+    await login.getByLabel("邮箱", { exact: true }).fill(email);
+    await login.getByLabel("密码", { exact: true }).fill(password.slice(0, 12));
+    await login.getByRole("button", { name: "登录卖家账号", exact: true }).click();
+    await expect(login.getByText("邮箱或密码不正确。", { exact: true })).toBeVisible();
+    await login.getByLabel("密码", { exact: true }).fill(password);
+    await login.getByRole("button", { name: "登录卖家账号", exact: true }).click();
+    await expect(login).toHaveURL(/\/seller\/orders$/);
+    await expect(login.getByText(email, { exact: false })).toBeVisible();
+    expect((await (await login.request.get("/api/v1/seller/auth/session")).json()).email).toBe(email);
+  } finally { await context.close(); }
 });

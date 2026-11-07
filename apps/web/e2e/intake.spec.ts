@@ -7,7 +7,6 @@ async function fillOrder(page: import("@playwright/test").Page) {
   await page.goto("/orders/new");
   await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
   await page.getByLabel(/商品名字/).fill(`虚构参考图理线夹 ${Date.now()}`);
-  await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
 }
 
 test("旧版Safari在无JavaScript时仍显示兼容性提示", async ({ browser, baseURL }) => {
@@ -125,4 +124,43 @@ test("商品图可粘贴，空白明细提示错误且不创建订单", async ({
   await page.getByLabel(/商品明细信息/).fill("虚构硅胶理线夹，已知黑色，尺寸待补充。");
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   await expect(page.getByText("商品参考图已上传，可在订单中查看。")).toBeVisible();
+});
+
+test("球衣资料无需固定参数核实，负责人能查看初审并决定接单", async ({ page, browser, baseURL }) => {
+  await registerSeller(page.request);
+  await page.goto("/orders/new");
+  await expect(page.locator(".intake-form input[type=checkbox]")).toHaveCount(0);
+  await page.getByLabel(/商品名字/).fill(`梅西主题球衣 ${Date.now()}`);
+  await page.getByLabel(/商品明细信息/).fill("蓝白，梅西，世界杯");
+  await page.getByLabel(/补充商品说明与期望卖点/).fill("面向阿根廷球迷，文案简洁。");
+  await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
+  const link = new URL(await page.getByLabel("私有订单链接").inputValue());
+  const orderId = link.pathname.split("/").pop();
+  await page.getByRole("link", { name: /查看订单进度/ }).click();
+  await expect(page.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
+  const response = await page.request.get(`/api/v1/orders/${orderId}`);
+  const order = await response.json();
+  expect(order.phase).toBe("AWAITING_ACCEPTANCE");
+  expect(order.facts).toEqual([]);
+  expect(order.intake_analysis.content_brief.english_title).toBeTruthy();
+  expect(order.intake_analysis.questions).toEqual([]);
+  const context = await browser.newContext({ baseURL });
+  try {
+    const owner = await context.newPage();
+    await owner.goto("/internal/login");
+    await owner.getByLabel("登录密码").fill(process.env.E2E_OWNER_PASSWORD!);
+    await owner.getByRole("button", { name: /登录工作台/ }).click();
+    await owner.waitForURL("**/internal/orders");
+    await owner.goto(`/internal/orders/${orderId}`);
+    await expect(owner.getByRole("button", { name: "提交接单批准", exact: true })).toBeEnabled();
+    await expect(owner.getByRole("button", { name: "提交拒绝接单", exact: true })).toBeEnabled();
+    await expect(owner.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
+    const readonly = owner.getByRole("region", { name: "商品图片与参考素材" });
+    await expect(readonly.locator('input[type="file"]')).toHaveCount(0);
+    const denied = await owner.request.post(`/api/v1/orders/${orderId}/assets`, { headers: { "X-CSRF-Token": (await (await owner.request.get("/api/v1/internal/auth/session")).json()).csrf_token }, multipart: { file: { name: "test.png", mimeType: "image/png", buffer: Buffer.from("not-an-image") } } });
+    expect(denied.status()).toBe(403);
+    await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
+    await expect.poll(async () => (await (await owner.request.get(`/api/v1/internal/orders/${orderId}/production`)).json()).research.length).toBeGreaterThan(0);
+    await expect.poll(async () => (await (await owner.request.get(`/api/v1/internal/orders/${orderId}/production`)).json()).versions.length).toBeGreaterThan(0);
+  } finally { await context.close(); }
 });

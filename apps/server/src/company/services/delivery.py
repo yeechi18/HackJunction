@@ -57,7 +57,6 @@ class PreparedDelivery:
     snapshot: dict
     content_hash: str
     package_key: str
-    is_demo: bool
     delivered_at: datetime
     asset_records: list[dict]
     review_command_id: UUID
@@ -95,7 +94,6 @@ def delivery_view(record: DeliverySnapshot) -> DeliveryView:
         faqs=record.snapshot["faqs"],
         pricing=record.snapshot["pricing"],
         images=record.snapshot["images"],
-        is_demo=record.is_demo,
         delivered_at=record.delivered_at,
         download_url=f"/api/v1/orders/{record.order_id}/download?version_id={record.version_id}",
     )
@@ -218,9 +216,7 @@ async def _prepare(
         raise DeliveryError("Some reviewed images are unavailable or belong to another order.")
     images = [by_id[asset_id] for asset_id in ids]
     if any(
-        image.version_id != version.id
-        or image.kind == "reference"
-        or image.is_demo != order.is_demo
+        image.version_id != version.id or image.kind == "reference" or image.is_demo
         for image in images
     ):
         raise DeliveryError("Generated images must belong to this exact version and mode.")
@@ -269,7 +265,6 @@ async def _prepare(
         ],
         "marketplace": "AMAZON_US",
         "language": "en-US",
-        "is_demo": order.is_demo,
     }
     payload = json.loads(json.dumps(payload, ensure_ascii=False, default=str))
     asset_records = [
@@ -287,7 +282,6 @@ async def _prepare(
             "review_result": review.result,
             "review_key": review.operation_key,
             "research": research.result,
-            "is_demo": order.is_demo,
         }
     )
     delivery_id = uuid4()
@@ -302,7 +296,6 @@ async def _prepare(
         payload,
         _digest({"version_id": str(version_id), "input_snapshot_id": str(snapshot.id), **payload}),
         f"{delivery_id.hex}.zip",
-        order.is_demo,
         now(),
         asset_records,
         review.command_id,
@@ -354,7 +347,6 @@ def _verify_and_build(settings: Settings, prepared: PreparedDelivery) -> tuple[s
                 "order_id": str(prepared.order_id),
                 "version_id": str(prepared.version_id),
                 "created_at": prepared.delivered_at.isoformat(),
-                "is_demo": prepared.is_demo,
                 "marketplace": "AMAZON_US",
                 "language": "en-US",
                 "content_hash": prepared.content_hash,
@@ -444,7 +436,6 @@ async def release_version(
             package_key=prepared.package_key,
             package_sha256=package_hash,
             package_byte_size=package_size,
-            is_demo=prepared.is_demo,
             delivered_at=prepared.delivered_at,
         )
         session.add(receipt)
@@ -475,7 +466,6 @@ async def release_version(
                     "version_id": str(version_id),
                     "delivery_id": str(receipt.id),
                     "content_hash": prepared.content_hash,
-                    "is_demo": prepared.is_demo,
                 },
             )
         )

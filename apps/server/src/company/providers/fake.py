@@ -199,6 +199,8 @@ def research_fixture(context: dict) -> dict:
         ("dimensions", "What are the dimensions?", ["bullets", "faqs"]),
         ("use_cases", "What is the use scope?", ["bullets"]),
     ]:
+        if key not in facts:
+            continue
         questions.append(
             {
                 "question": question,
@@ -209,11 +211,35 @@ def research_fixture(context: dict) -> dict:
                 "target_fields": fields,
             }
         )
+    if not questions:
+        fact = next(iter(facts.values()), None)
+        questions.append(
+            {
+                "question": "What product is described?",
+                "applicable": True,
+                "fact_ids": [fact["id"]] if fact else [],
+                "evidence_ids": [],
+                "missing_facts": [],
+                "follow_up_questions": [],
+                "target_fields": ["description"],
+            }
+        )
     return {
         "buyer_questions": questions,
         "market_notes": ["Offline fixture: supplied observations are not a live market search."],
         "missing_facts": [],
         "follow_up_questions": [],
+        "selling_point_plan": [
+            {
+                "request": context["seller_requirements"][:1000],
+                "strategy": "style_only",
+                "explanation": "离线fixture只记录表达偏好，不证明商品性能。",
+                "fact_ids": [],
+                "target_fields": ["description"],
+            }
+        ]
+        if context.get("seller_requirements")
+        else [],
     }
 
 
@@ -230,6 +256,10 @@ def review_fixture(context: dict) -> dict:
             else "use_cases"
         )
         fact = facts.get(key)
+        if item.get("fact_ids"):
+            fact = next(
+                (value for value in facts.values() if value["id"] in item["fact_ids"]), fact
+            )
         supported = fact is not None and not item.get("missing_facts")
         coverage.append(
             {
@@ -278,7 +308,28 @@ class FakeProvider:
                 "missing_fields": findings.get("missing_fields", []),
                 "conflicts": findings.get("conflicts", []),
                 "questions": [],
-                "summary": "离线测试已读取当前资料，程序仍负责缺项与事实确认校验。",
+                "summary": "我会根据现有资料整理内容方向，由负责人决定是否接单。",
+                "assessment": "uncertain",
+                "content_brief": {
+                    "product_type": context.get("product_name", "商品"),
+                    "audience": "对该商品有需求的买家",
+                    "selling_points": ["围绕已有描述组织内容", "突出可见外观与使用场景"],
+                    "english_title": "Product Listing",
+                    "english_description": "Explore the product described by the seller.",
+                },
+                "source_facts": [
+                    {
+                        "key": match[0],
+                        "value": match[1],
+                        "unit": None,
+                        "source": "product_details",
+                        "source_quote": f"{match[0]}: {match[1]}",
+                    }
+                    for match in re.findall(
+                        r"(?m)^(material|dimensions|pack_quantity|use_cases|color): ([^\n]+)$",
+                        context.get("product_details") or "",
+                    )
+                ],
             }
         elif name == "ResearchDraft":
             answer = research_fixture(context)

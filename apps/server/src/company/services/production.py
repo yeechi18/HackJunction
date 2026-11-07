@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import re
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -20,6 +21,8 @@ from company.agents.research import research_product
 from company.agents.review import review_listing
 from company.config import Settings, get_settings
 from company.domain.facts import canonical_key
+from company.persistence.agent_runs import AgentRun
+from company.persistence.assets import Asset
 from company.persistence.database import Database
 from company.persistence.models import Command, HumanDecision, InputSnapshot, Order, OrderEvent, now
 from company.persistence.production import (
@@ -160,9 +163,62 @@ def confirmed_facts(snapshot: InputSnapshot) -> list[dict]:
         if key in facts and facts[key] != fact:
             raise ProductionError("Confirmed input facts still contain conflicting values.")
         facts[key] = fact
-    if not facts:
-        raise ProductionError("Production requires seller-confirmed product facts.")
     return list(facts.values())
+
+
+async def source_facts(session: AsyncSession, order: Order, snapshot: InputSnapshot) -> list[dict]:
+    """Keep confirmations and seller descriptions at separate provenance levels."""
+    result = {
+        fact["key"]: {**fact, "provenance": "seller_confirmed"}
+        for fact in confirmed_facts(snapshot)
+    }
+    result.setdefault(
+        "product_name",
+        {
+            "id": "fact:product_name",
+            "key": "product_name",
+            "value": order.product_name,
+            "unit": None,
+            "provenance": "seller_provided",
+            "source_quote": order.product_name,
+            "source_kind": "seller_input",
+        },
+    )
+    run = await session.scalar(
+        select(AgentRun)
+        .where(
+            AgentRun.input_snapshot_id == snapshot.id,
+            AgentRun.role == "acquisition",
+            AgentRun.status == "succeeded",
+        )
+        .order_by(AgentRun.finished_at.desc())
+        .limit(1)
+    )
+    grouped = {}
+    for fact in (run.result or {}).get("source_facts", []) if run else []:
+        key = canonical_key(fact["key"])
+        if key in result or fact.get("source") == "product_page":
+            continue
+        # A request for a performance/authenticity claim cannot become its own evidence.
+        if re.search(
+            r"防水|认证|正版|官方授权|waterproof|certif|official|authentic", fact["value"], re.I
+        ):
+            continue
+        grouped.setdefault(key, []).append(fact)
+    for key, records in grouped.items():
+        if len({(item["value"], item.get("unit")) for item in records}) != 1:
+            continue
+        fact = records[0]
+        result[key] = {
+            "id": f"fact:{key}",
+            "key": key,
+            "value": fact["value"],
+            "unit": fact.get("unit"),
+            "provenance": "seller_provided",
+            "source_quote": fact["source_quote"],
+            "source_kind": "seller_input",
+        }
+    return list(result.values())
 
 
 def receipt_result(receipt: ProductionStepReceipt, *, cache_hit: bool) -> StepResult:
@@ -281,10 +337,37 @@ async def prepare(
             raise ProductionError("The original feedback is no longer approved for production.")
         context = {
             "product_name": order.product_name,
-            "is_demo": order.is_demo,
-            "confirmed_facts": confirmed_facts(snapshot),
+            "product_details": order.product_details,
+            "domestic_product_url": order.domestic_product_url,
+            "seller_requirements": snapshot.notes,
+            "reference_images": [
+                {
+                    "id": str(image.id),
+                    "width": image.width,
+                    "height": image.height,
+                    "method": image.method,
+                }
+                for image in await session.scalars(
+                    select(Asset)
+                    .where(Asset.order_id == order.id, Asset.kind == "reference")
+                    .order_by(Asset.created_at)
+                    .limit(16)
+                )
+            ],
+            "confirmed_facts": await source_facts(session, order, snapshot),
             "evidence": evidence,
         }
+        intake = await session.scalar(
+            select(AgentRun)
+            .where(
+                AgentRun.input_snapshot_id == snapshot.id,
+                AgentRun.role == "acquisition",
+                AgentRun.status == "succeeded",
+            )
+            .order_by(AgentRun.finished_at.desc())
+            .limit(1)
+        )
+        context["initial_analysis"] = intake.result if intake else None
         research_id = parent_id = None
         if role != "research":
             reuse_base = None

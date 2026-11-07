@@ -379,23 +379,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/internal/orders/{order_id}/production/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start Production */
-        post: operations["start_production_api_v1_internal_orders__order_id__production_start_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/internal/orders/{order_id}/evidence": {
         parameters: {
             query?: never;
@@ -406,8 +389,7 @@ export interface paths {
         /** Get Evidence */
         get: operations["get_evidence_api_v1_internal_orders__order_id__evidence_get"];
         put?: never;
-        /** Create Evidence */
-        post: operations["create_evidence_api_v1_internal_orders__order_id__evidence_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -552,40 +534,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/demo-listings/{public_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Demo Listing */
-        get: operations["demo_listing_api_v1_demo_listings__public_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/demo-listings/{public_id}/assets/{asset_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Demo Image */
-        get: operations["demo_image_api_v1_demo_listings__public_id__assets__asset_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/orders/{order_id}/support-requests": {
         parameters: {
             query?: never;
@@ -632,23 +580,6 @@ export interface paths {
         put?: never;
         /** Reply */
         post: operations["reply_api_v1_internal_support_tickets__ticket_id__messages_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/internal/orders/{order_id}/time-entries": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Active Time */
-        post: operations["active_time_api_v1_internal_orders__order_id__time_entries_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -725,8 +656,6 @@ export interface components {
             product_name: string;
             /** Phase */
             phase: string;
-            /** Is Demo */
-            is_demo: boolean;
             /**
              * Created At
              * Format: date-time
@@ -773,32 +702,6 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
-        };
-        /** ActiveTimeInput */
-        ActiveTimeInput: {
-            /** Seconds */
-            seconds: number;
-            /** Reason */
-            reason: string;
-        };
-        /** ActiveTimeView */
-        ActiveTimeView: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Seconds */
-            seconds: number;
-            /** Reason */
-            reason: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Owner Active Seconds */
-            owner_active_seconds: number;
         };
         /** AgentRunView */
         AgentRunView: {
@@ -1010,6 +913,31 @@ export interface components {
              */
             confirmed_at: string;
         };
+        /** ContentBrief */
+        ContentBrief: {
+            /**
+             * Product Type
+             * @default
+             */
+            product_type: string;
+            /**
+             * Audience
+             * @default
+             */
+            audience: string;
+            /** Selling Points */
+            selling_points?: string[];
+            /**
+             * English Title
+             * @default
+             */
+            english_title: string;
+            /**
+             * English Description
+             * @default
+             */
+            english_description: string;
+        };
         /** CreatedOrder */
         CreatedOrder: {
             /**
@@ -1117,8 +1045,6 @@ export interface components {
             };
             /** Images */
             images: components["schemas"]["DeliveryImage"][];
-            /** Is Demo */
-            is_demo: boolean;
             /**
              * Delivered At
              * Format: date-time
@@ -1126,42 +1052,6 @@ export interface components {
             delivered_at: string;
             /** Download Url */
             download_url: string;
-        };
-        /** DemoListingView */
-        DemoListingView: {
-            /** Public Id */
-            public_id: string;
-            /**
-             * Mode
-             * @default simulated
-             * @constant
-             */
-            mode: "simulated";
-            /**
-             * Status
-             * @default SIMULATED
-             * @constant
-             */
-            status: "SIMULATED";
-            /**
-             * Notice
-             * @default 模拟商品页：未发布到 Amazon，不代表真实成交或销量。
-             */
-            notice: string;
-            /** Listing */
-            listing: {
-                [key: string]: unknown;
-            };
-            /** Faqs */
-            faqs: unknown[];
-            /** Images */
-            images: unknown[];
-            /** Listing Price */
-            listing_price: string;
-            /** Currency */
-            currency: string;
-            /** Marketplace */
-            marketplace: string;
         };
         /** EmailAddress */
         EmailAddress: {
@@ -1186,51 +1076,6 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-        };
-        /** EvidenceInput */
-        EvidenceInput: {
-            /**
-             * Kind
-             * @default manual_observation
-             */
-            kind: string;
-            /** Source */
-            source: string;
-            /** Source Url */
-            source_url?: string | null;
-            /**
-             * Provider
-             * @default manual
-             * @constant
-             */
-            provider: "manual";
-            /**
-             * Status
-             * @default success
-             * @enum {string}
-             */
-            status: "success" | "partial" | "failed";
-            /**
-             * Observed At
-             * Format: date-time
-             */
-            observed_at?: string;
-            /**
-             * Scope
-             * @default Amazon US / this SKU
-             */
-            scope: string;
-            /**
-             * Is Demo
-             * @default false
-             */
-            is_demo: boolean;
-            /** Content */
-            content: string;
-            /** Data */
-            data?: {
-                [key: string]: unknown;
-            };
         };
         /** EvidenceList */
         EvidenceList: {
@@ -1337,6 +1182,44 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IntakeAnalysis */
+        IntakeAnalysis: {
+            /** Summary */
+            summary: string;
+            /**
+             * Assessment
+             * @default uncertain
+             * @enum {string}
+             */
+            assessment: "consistent" | "uncertain" | "inconsistent";
+            /** Issues */
+            issues?: components["schemas"]["IntakeIssue"][];
+            /** Image Observations */
+            image_observations?: string[];
+            /** Source Facts */
+            source_facts?: components["schemas"]["SourceFact"][];
+            content_brief?: components["schemas"]["ContentBrief"];
+            page_observation?: components["schemas"]["PageObservation"] | null;
+            /** Questions */
+            questions?: string[];
+            /**
+             * Strategy Version
+             * @default evidence-intake-v1
+             */
+            strategy_version: string;
+        };
+        /** IntakeIssue */
+        IntakeIssue: {
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "warning" | "concern";
+            /** Description */
+            description: string;
+            /** Basis */
+            basis: string;
+        };
         /** InternalOrder */
         InternalOrder: {
             /**
@@ -1358,10 +1241,9 @@ export interface components {
             domestic_product_url?: string | null;
             /** Facts */
             facts: components["schemas"]["ProductFact"][];
+            intake_analysis?: components["schemas"]["IntakeAnalysis"] | null;
             /** Notes */
             notes: string | null;
-            /** Is Demo */
-            is_demo: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1468,8 +1350,6 @@ export interface components {
              * Format: uuid
              */
             order_id: string;
-            /** Is Demo */
-            is_demo: boolean;
             /** Publish Mode */
             publish_mode: string;
             /** Recorded Model Calls */
@@ -1510,8 +1390,6 @@ export interface components {
             failed_reviews: number;
             /** Feedback Requests */
             feedback_requests: number;
-            /** Owner Active Seconds */
-            owner_active_seconds: number;
             /** Open Support Tickets */
             open_support_tickets: number;
             /** Explanations */
@@ -1540,10 +1418,9 @@ export interface components {
             domestic_product_url?: string | null;
             /** Facts */
             facts: components["schemas"]["ProductFact"][];
+            intake_analysis?: components["schemas"]["IntakeAnalysis"] | null;
             /** Notes */
             notes: string | null;
-            /** Is Demo */
-            is_demo: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1587,6 +1464,28 @@ export interface components {
              */
             expires_at: string;
         };
+        /** PageObservation */
+        PageObservation: {
+            /** Url */
+            url: string;
+            /** Status */
+            status: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
+            /**
+             * Retrieved At
+             * @default
+             */
+            retrieved_at: string;
+        };
         /** ProductFact */
         ProductFact: {
             /** Key */
@@ -1600,11 +1499,6 @@ export interface components {
              * @default false
              */
             confirmed: boolean;
-        };
-        /** ProductionStartInput */
-        ProductionStartInput: {
-            /** Expected Revision */
-            expected_revision: number;
         };
         /** ProductionView */
         ProductionView: {
@@ -1883,23 +1777,32 @@ export interface components {
              */
             created_at: string;
         };
+        /** SourceFact */
+        SourceFact: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
+            /** Unit */
+            unit?: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "product_name" | "product_details" | "seller_notes" | "seller_message" | "product_page";
+            /** Source Quote */
+            source_quote: string;
+        };
         /** SubmitOrder */
         SubmitOrder: {
             /** Product Name */
             product_name: string;
             /** Product Details */
-            product_details?: string | null;
+            product_details: string;
             /** Domestic Product Url */
             domestic_product_url?: string | null;
-            /** Facts */
-            facts?: components["schemas"]["ProductFact"][];
             /** Notes */
             notes?: string | null;
-            /**
-             * Is Demo
-             * @default false
-             */
-            is_demo: boolean;
         };
         /** SupplementInput */
         SupplementInput: {
@@ -2704,43 +2607,6 @@ export interface operations {
             };
         };
     };
-    start_production_api_v1_internal_orders__order_id__production_start_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "idempotency-key": string;
-            };
-            path: {
-                order_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProductionStartInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QueuedCommand"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_evidence_api_v1_internal_orders__order_id__evidence_get: {
         parameters: {
             query?: never;
@@ -2759,41 +2625,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceList"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_evidence_api_v1_internal_orders__order_id__evidence_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                order_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EvidenceInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvidenceView"];
                 };
             };
             /** @description Validation Error */
@@ -3138,69 +2969,6 @@ export interface operations {
             };
         };
     };
-    demo_listing_api_v1_demo_listings__public_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                public_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DemoListingView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    demo_image_api_v1_demo_listings__public_id__assets__asset_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                public_id: string;
-                asset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     seller_tickets_api_v1_orders__order_id__support_requests_get: {
         parameters: {
             query?: never;
@@ -3325,43 +3093,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportTicketView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    active_time_api_v1_internal_orders__order_id__time_entries_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path: {
-                order_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ActiveTimeInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActiveTimeView"];
                 };
             };
             /** @description Validation Error */

@@ -58,10 +58,6 @@ def _confirmed_facts(facts: list[dict], *, is_demo: bool) -> dict[str, dict]:
         ):
             raise ImageLayoutError("Conflicting product facts must be resolved before rendering.")
         collected[key] = fact
-    if any(key not in collected for key in ("pack_quantity", "dimensions")):
-        raise ImageLayoutError(
-            "Confirmed pack quantity and dimensions are required for image labels."
-        )
     return collected
 
 
@@ -146,21 +142,25 @@ def render_layouts(
     with Image.open(io.BytesIO(normalized.data)) as opened:
         reference = opened.convert("RGBA")
     verified = _confirmed_facts(facts, is_demo=is_demo)
-    quantity = verified["pack_quantity"]["value"]
-    if not re.fullmatch(r"[1-9][0-9]*", quantity):
-        raise ImageLayoutError("Pack quantity must be a confirmed positive integer.")
-    dimensions = _dimension_label(verified["dimensions"])
-    dimension_ids = [verified["dimensions"]["id"]]
+    quantity = verified.get("pack_quantity", {}).get("value", "")
+    if quantity and not re.fullmatch(r"[1-9][0-9]*", quantity):
+        quantity = ""
+    dimensions = ""
+    dimension_ids = []
+    if "dimensions" in verified:
+        try:
+            dimensions = _dimension_label(verified["dimensions"])
+            dimension_ids = [verified["dimensions"]["id"]]
+        except ImageLayoutError:
+            pass
     dimension_heading = "Dimensions"
     scope = verified.get("dimension_scope")
-    if scope:
+    if scope and dimensions:
         value = scope["value"].casefold()
-        if re.search(
-            r"\beach\b|\bindividual\b|\bper[ -]?(?:item|clip|piece)\b|单件|每个|单个", value
-        ):
+        if re.search(r"\beach\b|\bindividual\b|单件|每个|单个", value):
             dimension_heading = "Dimensions (per item)"
             dimension_ids.append(scope["id"])
-        elif re.search(r"\bpackage\b|\bpackaging\b|\bper pack\b|整包|包装", value):
+        elif re.search(r"\bpackage\b|\bpackaging\b|整包|包装", value):
             dimension_heading = "Package dimensions"
             dimension_ids.append(scope["id"])
 
@@ -172,14 +172,18 @@ def render_layouts(
     _draw_text(drawing, "PRODUCT DETAILS", (80, 72, 1440, 110), size=76, fill="#1c2429")
     _fit_reference(detail, reference, (80, 240, 1440, 740))
     detail_layers = []
-    for text, fact_ids, box in [
-        (
-            f"Pack includes: {quantity} pieces",
-            [verified["pack_quantity"]["id"]],
-            (80, 1060, 1440, 160),
-        ),
-        (f"{dimension_heading}: {dimensions}", dimension_ids, (80, 1260, 1440, 230)),
-    ]:
+    labels = []
+    if quantity:
+        labels.append(
+            (
+                f"Pack includes: {quantity} pieces",
+                [verified["pack_quantity"]["id"]],
+                (80, 1060, 1440, 160),
+            )
+        )
+    if dimensions:
+        labels.append((f"{dimension_heading}: {dimensions}", dimension_ids, (80, 1260, 1440, 230)))
+    for text, fact_ids, box in labels:
         layout = _draw_text(drawing, text, box, size=54, fill="#1c2429")
         detail_layers.append({"text": text, "fact_ids": fact_ids, **layout})
     if is_demo:

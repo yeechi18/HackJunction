@@ -18,7 +18,6 @@ PUBLIC_MANIFEST_FIELDS = {
     "created_at",
     "marketplace",
     "language",
-    "is_demo",
     "content_hash",
 }
 MAX_PACKAGE_ASSETS = 16

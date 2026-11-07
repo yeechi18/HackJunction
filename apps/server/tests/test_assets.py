@@ -33,7 +33,7 @@ from company.schemas.orders import CreateOrder
 from company.services.access import create_session, csrf_token, token_hash
 from company.services.orders import create_order
 from company.tools.build_package import build_package
-from company.tools.image_layout import ImageLayoutError, MissingReferenceImage
+from company.tools.image_layout import MissingReferenceImage
 
 
 def image_bytes(*, image_format: str = "PNG", size=(120, 80), exif=None):
@@ -155,9 +155,11 @@ async def test_no_reference_or_unconfirmed_specs_cannot_create_product_images(tm
     reference.write_bytes(image_bytes())
     facts = confirmed_facts()
     facts[0]["source_kind"] = "competitor"
-    with pytest.raises(ImageLayoutError):
-        await provider.render_bundle(reference, facts)
-    assert not (tmp_path / "assets").exists()
+    rendered = await provider.render_bundle(reference, facts)
+    assert all(
+        "Pack includes" not in layer["text"] for item in rendered for layer in item.text_layers
+    )
+    assert len(rendered) == 2
 
 
 def test_zip_contains_only_explicit_public_fields_and_images(tmp_path: Path):
@@ -239,9 +241,8 @@ async def asset_context(postgres_test_settings: Settings, tmp_path: Path):
                     session,
                     settings,
                     CreateOrder(
-                        seller_name="Asset test seller",
+                        product_details="Known test product specifications.",
                         product_name="Fictional cable clip",
-                        is_demo=True,
                     ),
                 )
             order_ids.append(result.id)
@@ -273,7 +274,7 @@ async def test_asset_upload_scope_csrf_and_generated_visibility(asset_context):
     response = await seller.post(url, files=upload, headers={"x-csrf-token": csrf})
     assert response.status_code == 201, response.text
     original = response.json()
-    assert original["kind"] == "reference" and original["is_demo"] is True
+    assert original["kind"] == "reference" and original["is_demo"] is False
     assert "storage_key" not in original and "path" not in original
     assert (await seller.get(original["url"])).status_code == 200
     assert (await other.get(original["url"])).status_code == 404
@@ -293,7 +294,7 @@ async def test_asset_upload_scope_csrf_and_generated_visibility(asset_context):
                 byte_size=stored.byte_size,
                 width=stored.width,
                 height=stored.height,
-                is_demo=True,
+                is_demo=False,
                 delivered_at=None,
                 image_metadata={},
             )
@@ -315,7 +316,7 @@ async def test_asset_upload_scope_csrf_and_generated_visibility(asset_context):
     assert (await seller.post(url, files=upload, headers={"x-csrf-token": csrf})).status_code == 201
     assert (
         await owner.post(url, files=upload, headers={"x-csrf-token": owner_csrf})
-    ).status_code == 201
+    ).status_code == 403
 
 
 @pytest.mark.integration
@@ -358,7 +359,11 @@ async def test_reference_deletion_requires_scope_csrf_and_removes_file(asset_con
     assert path.is_file()
     assert (
         await owner.delete(asset["url"], headers={"X-CSRF-Token": owner_csrf})
-    ).status_code == 204
+    ).status_code == 403
+    assert path.exists()
+    owner_list = (await owner.get(url)).json()["items"]
+    assert all(item["can_delete"] is False for item in owner_list)
+    assert (await seller.delete(asset["url"], headers={"X-CSRF-Token": csrf})).status_code == 204
     assert not path.exists()
     assert (await seller.get(asset["url"])).status_code == 404
     assert (await seller.get(url)).json()["items"] == []
@@ -393,7 +398,7 @@ async def test_used_reference_and_generated_assets_cannot_be_deleted(asset_conte
                 byte_size=stored.byte_size,
                 width=stored.width,
                 height=stored.height,
-                is_demo=True,
+                is_demo=False,
                 delivered_at=None,
                 image_metadata={"reference_sha256": reference["sha256"]},
             )
@@ -406,7 +411,7 @@ async def test_used_reference_and_generated_assets_cannot_be_deleted(asset_conte
     ).status_code == 409
     assert (
         await owner.delete(f"{url}/{generated_id}", headers={"X-CSRF-Token": owner_csrf})
-    ).status_code == 409
+    ).status_code == 403
     assert (await seller.get(reference["url"])).status_code == 200
     assert stored.path.is_file()
 

@@ -70,9 +70,8 @@ async def delivery_context(postgres_test_settings: Settings, tmp_path):
                     session,
                     settings,
                     CreateOrder(
-                        seller_name="Delivery fixture seller",
+                        product_details="Known test product specifications.",
                         product_name="Fictional desk clips",
-                        is_demo=True,
                         facts=[
                             ProductFact(key="material", value="silicone", confirmed=True),
                             ProductFact(key="pack_quantity", value="6", confirmed=True),
@@ -177,7 +176,7 @@ async def delivery_context(postgres_test_settings: Settings, tmp_path):
                         byte_size=stored.byte_size,
                         width=stored.width,
                         height=stored.height,
-                        is_demo=True,
+                        is_demo=False,
                         image_metadata={},
                         delivered_at=None,
                     )

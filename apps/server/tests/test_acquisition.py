@@ -44,7 +44,7 @@ def complete_input():
 
 
 @pytest.mark.asyncio
-async def test_missing_or_unconfirmed_facts_block_even_if_model_says_complete():
+async def test_optional_specs_do_not_block_owner_review():
     order = complete_input()
     order["facts"] = [fact for fact in order["facts"] if fact["key"] != "dimensions"]
     order["facts"][0]["confirmed"] = False
@@ -52,10 +52,9 @@ async def test_missing_or_unconfirmed_facts_block_even_if_model_says_complete():
 
     result = await inspect_intake(order, provider)
 
-    assert result.ready_for_acceptance is False
-    assert result.missing_fields == ["material", "dimensions"]
-    assert any("材质" in question for question in result.questions)
-    assert any("尺寸" in question for question in result.questions)
+    assert result.ready_for_acceptance is True
+    assert result.missing_fields == []
+    assert result.questions == []
     assert len(provider.calls) == 1
     assert result.usage["total_tokens"] == 26
     assert result.model == "test-model"
@@ -76,11 +75,11 @@ async def test_conflicting_values_require_confirmation_and_never_mutate_facts():
 
     result = await inspect_intake(order, StubProvider())
 
-    assert result.ready_for_acceptance is False
+    assert result.ready_for_acceptance is True
     assert result.missing_fields == []
     assert result.conflicts[0].key == "pack_quantity"
     assert result.conflicts[0].values == ["6", "4"]
-    assert any("6" in question and "4" in question for question in result.questions)
+    assert result.questions == []  # Differences are recorded without canned question lists.
     assert order == before
 
 
@@ -92,8 +91,8 @@ async def test_reference_information_cannot_satisfy_confirmed_product_facts():
 
     result = await inspect_intake(order, StubProvider())
 
-    assert result.ready_for_acceptance is False
-    assert result.missing_fields == ["material", "dimensions"]
+    assert result.ready_for_acceptance is True
+    assert result.missing_fields == []
     assert result.conflicts == []
 
 
@@ -114,8 +113,72 @@ async def test_complete_input_calls_model_for_summary_but_ignores_false_missing_
     assert result.ready_for_acceptance is True
     assert result.missing_fields == []
     assert result.conflicts == []
-    assert result.questions == []
+    assert result.questions == provider.answer["questions"]
     assert result.summary == provider.answer["summary"]
     assert result.elapsed_seconds == 0.25
     assert len(provider.calls) == 1
-    assert "程序已提供" in provider.calls[0][0][0]["content"]
+    assert "不要再机械索取" in provider.calls[0][0][0]["content"]
+
+
+async def test_jersey_description_with_actual_image_produces_brief_without_fixed_questions(
+    tmp_path,
+):
+    from PIL import Image
+
+    image = tmp_path / "jersey.png"
+    Image.new("RGB", (50, 50), "lightblue").save(image)
+    provider = StubProvider(
+        summary="可以围绕蓝白配色和球迷观赛场景展开，文案保持友好。是否官方授权仍无法仅凭图片判断。",
+        assessment="uncertain",
+        image_observations=["参考图可见浅蓝配色。"],
+        content_brief={
+            "product_type": "球衣",
+            "audience": "关注阿根廷队的球迷",
+            "selling_points": ["蓝白配色", "球迷观赛场景"],
+            "english_title": "Blue and White Football Jersey",
+        },
+        source_facts=[
+            {
+                "key": "color",
+                "value": "蓝白",
+                "source": "product_details",
+                "source_quote": "蓝白，梅西，世界杯",
+            }
+        ],
+    )
+    result = await inspect_intake(
+        {
+            "product_name": "梅西主题球衣",
+            "product_details": "蓝白，梅西，世界杯",
+            "facts": [],
+            "page_observation": {"url": "https://example.com/a", "status": "restricted"},
+        },
+        provider,
+        image_paths=[image],
+    )
+    assert result.ready_for_acceptance and result.missing_fields == [] and result.questions == []
+    assert result.content_brief.product_type == "球衣" and result.image_observations
+    assert result.page_observation.status == "restricted"
+    content = provider.calls[0][0][-1]["content"]
+    assert content[1]["type"] == "image_url" and content[1]["image_url"]["url"].startswith(
+        "data:image/png;base64,"
+    )
+
+
+async def test_no_attached_image_cannot_report_visual_observations_or_invent_page_status():
+    result = await inspect_intake(
+        {
+            "product_name": "球衣",
+            "facts": [],
+            "page_observation": {"url": "https://example.com/a", "status": "unavailable"},
+        },
+        StubProvider(
+            image_observations=["我看到了图片"],
+            page_observation={
+                "url": "https://example.com/a",
+                "status": "ok",
+                "excerpt": "invented",
+            },
+        ),
+    )
+    assert result.image_observations == [] and result.page_observation.status == "unavailable"

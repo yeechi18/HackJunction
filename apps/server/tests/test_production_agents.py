@@ -29,7 +29,6 @@ class StubProvider:
 def context():
     return {
         "product_name": "桌面理线夹",
-        "is_demo": True,
         "confirmed_facts": [
             {"id": "count", "key": "pack_quantity", "value": "4", "unit": None},
             {"id": "diameter", "key": "cable_diameter", "value": "6", "unit": "mm"},
@@ -45,7 +44,7 @@ def context():
                 "observed_at": "2026-11-07",
                 "price": "8.99",
                 "currency": "USD",
-                "is_demo": True,
+                "is_demo": False,
             },
             {
                 "id": "market-b",
@@ -55,7 +54,7 @@ def context():
                 "observed_at": "2026-11-07",
                 "price": "11.99",
                 "currency": "USD",
-                "is_demo": True,
+                "is_demo": False,
             },
         ],
     }
@@ -123,7 +122,7 @@ async def test_research_prices_are_from_supplied_evidence_and_metadata_from_prov
     assert str(result.suggested_listing_price_range.low) == "8.99"
     assert str(result.suggested_listing_price_range.high) == "11.99"
     assert result.suggested_listing_price_range.evidence_ids == ["market-a", "market-b"]
-    assert result.suggested_listing_price_range.is_demo
+    assert result.suggested_listing_price_range.is_demo is False
     assert result.usage["total_tokens"] == 30
     assert result.model == "actual-stub-model" and result.elapsed_seconds == 0.125
     assert source == before and len(provider.calls) == 1
@@ -167,10 +166,8 @@ def test_questions_and_layout_instructions_are_not_pack_or_certification_asserti
 
 async def test_demo_and_failed_sources_do_not_support_real_market_prices():
     source = context()
-    source["is_demo"] = False
-    result = await research_product(source, StubProvider(research_answer()))
-    assert result.suggested_listing_price_range is None
-    source["is_demo"] = True
+    for evidence in source["evidence"]:
+        evidence["is_demo"] = True
     for evidence in source["evidence"]:
         evidence["status"] = "failed"
     result = await research_product(source, StubProvider(research_answer()))
@@ -260,3 +257,57 @@ def test_legacy_quantity_key_keeps_fact_id_and_does_not_change_dimensions():
     source = context()
     source["confirmed_facts"][0]["key"] = "package_quantity"
     assert program_review(source, ListingDraft.model_validate(draft())) == []
+
+
+@pytest.mark.parametrize(
+    "strategy,ids", [("use_confirmed_fact", []), ("style_only", ["invented-id"])]
+)
+async def test_selling_point_plan_rejects_missing_or_invented_fact_support(strategy, ids):
+    answer = research_answer()
+    answer["selling_point_plan"] = [
+        {
+            "request": "突出卖点",
+            "strategy": strategy,
+            "explanation": "解释",
+            "fact_ids": ids,
+            "target_fields": ["bullets"],
+        }
+    ]
+    with pytest.raises(ProviderError):
+        await research_product(context(), StubProvider(answer))
+
+
+async def test_selling_point_plan_preserves_seller_intent_without_promoting_unknown_claims():
+    source = context()
+    source["seller_requirements"] = "突出硅胶材质，表达简洁；希望防水但尚无依据。"
+    answer = research_answer()
+    answer["selling_point_plan"] = [
+        {
+            "request": "突出硅胶",
+            "strategy": "use_confirmed_fact",
+            "explanation": "已核实材质",
+            "fact_ids": ["material"],
+            "target_fields": ["bullets"],
+        },
+        {
+            "request": "表达简洁",
+            "strategy": "style_only",
+            "explanation": "仅调整表达",
+            "fact_ids": [],
+            "target_fields": ["description"],
+        },
+        {
+            "request": "防水",
+            "strategy": "needs_confirmation",
+            "explanation": "尚无性能依据",
+            "fact_ids": [],
+            "target_fields": ["bullets"],
+        },
+    ]
+    provider = StubProvider(answer)
+    result = await research_product(source, provider)
+    assert [item.strategy for item in result.selling_point_plan] == [
+        "use_confirmed_fact",
+        "style_only",
+        "needs_confirmation",
+    ]

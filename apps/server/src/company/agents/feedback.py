@@ -91,12 +91,12 @@ async def inspect_feedback(context: dict, provider) -> FeedbackResult:
                 "请通过事实确认表提交完整商品参数，并明确确认修改值；聊天文字不会自动成为商品事实。"
             )
         else:
-            facts = _collect_facts({"facts": updates, "is_demo": context.get("is_demo", False)})
+            facts = _collect_facts({"facts": updates})
             missing, conflicts = _program_findings({"product_name": context["product_name"]}, facts)
             if missing or conflicts or any(fact.get("confirmed") is not True for fact in updates):
                 actionable = False
                 required_questions.append(
-                    "请补齐并确认材质、尺寸及单位、每包数量和适用范围，消除事实冲突后重交完整快照。"
+                    "请核实本次修改值并消除相互矛盾的记录，不需要补齐固定商品属性。"
                 )
             base = {fact["key"]: fact for fact in context.get("base_facts", [])}
             added_claim = any(

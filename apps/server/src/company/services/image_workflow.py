@@ -19,7 +19,7 @@ from company.providers.mimo import ProviderError
 from company.providers.storage import LocalAssetStorage
 from company.services.assets import register_rendered_assets
 from company.services.model_budget import check_budget
-from company.services.production import CommitGuard, accepted_revision, confirmed_facts, digest
+from company.services.production import CommitGuard, accepted_revision, digest, source_facts
 from company.tools.image_layout import MissingReferenceImage
 
 
@@ -113,7 +113,7 @@ async def render_version_images(
         reference = await session.scalar(query.order_by(Asset.created_at.desc(), Asset.id).limit(1))
         if reference is None:
             raise MissingReferenceImage("请补充可核实的商品参考图，再制作并审校完整上架包。")
-        if reference.is_demo != order.is_demo:
+        if reference.is_demo:
             raise ImageWorkflowError("Reference image mode does not match this order.")
         source = {
             "id": reference.id,
@@ -157,11 +157,10 @@ async def render_version_images(
             version = child
             previous_images = await _image_records(session, version) if version.assets else []
         selected_version = version.id
-        facts = confirmed_facts(snapshot)
+        facts = await source_facts(session, order, snapshot)
         plan = version.draft.get("image_plan", [])
         input_snapshot_id, expected_revision = snapshot.id, order.revision
         draft_hash = digest(version.draft)
-        is_demo = order.is_demo
         cached = [
             {"id": image.id, "storage_key": image.storage_key, "sha256": image.sha256}
             for image in previous_images
@@ -183,7 +182,7 @@ async def render_version_images(
         storage.resolve(source["storage_key"]),
         facts,
         plan,
-        is_demo=is_demo,
+        is_demo=False,
     )
     async with database.sessions() as session, session.begin():
         if commit_guard is not None:

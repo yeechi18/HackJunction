@@ -171,9 +171,8 @@ async def bundle_context(postgres_test_settings, tmp_path):
                     session,
                     settings,
                     CreateOrder(
-                        seller_name="M5 graph fixture",
+                        product_details="Known test product specifications.",
                         product_name="Fictional desk clips",
-                        is_demo=True,
                         facts=[
                             {"key": "material", "value": "silicone", "confirmed": True},
                             {"key": "pack_quantity", "value": "6", "confirmed": True},
@@ -444,3 +443,29 @@ async def test_owner_effect_survives_checkpoint_failure_without_duplicate_artifa
         else:
             assert len(await candidates(database, order_id)) == 2
             assert provider.calls.count("ListingDraft") == 2
+
+
+async def test_sparse_product_can_be_analyzed_accepted_and_rendered_without_fixed_specs(
+    bundle_context,
+):
+    from company.persistence.models import InputSnapshot
+    from company.providers.fake import FakeProvider
+
+    settings, database, client, create = bundle_context
+    order_id = await create()
+    async with database.sessions() as session, session.begin():
+        order = await session.get(Order, order_id)
+        order.product_name = "蓝白主题球衣"
+        order.product_details = "蓝白配色，球迷观赛主题。"
+        snapshot = await session.scalar(
+            select(InputSnapshot).where(InputSnapshot.order_id == order_id)
+        )
+        snapshot.facts = []
+    seller, headers = await client(order_id)
+    await upload(seller, headers, order_id)
+    provider = FakeProvider(settings.model_copy(update={"mimo_mode": "fake", "app_env": "test"}))
+    await accepted(settings, database, order_id, provider)
+    versions = await candidates(database, order_id)
+    assert len(versions) == 1 and versions[0].full_passed and len(versions[0].assets) == 2
+    async with database.sessions() as session:
+        assert (await session.get(Order, order_id)).phase == "AWAITING_RELEASE"

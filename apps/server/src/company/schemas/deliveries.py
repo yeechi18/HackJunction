@@ -32,7 +32,6 @@ class DeliveryView(BaseModel):
     faqs: list[FAQ]
     pricing: dict
     images: list[DeliveryImage]
-    is_demo: bool
     delivered_at: datetime
     download_url: str
 

@@ -1,16 +1,17 @@
-"""MiMo writes intake language; deterministic facts decide acceptance readiness."""
+"""Multimodal initial analysis and content direction; the owner decides acceptance."""
 
+import asyncio
 import json
 from collections import defaultdict
 from importlib.resources import files
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from company.domain.facts import canonical_key
 from company.providers.mimo import MiMoProvider
+from company.schemas.intake import IntakeAnalysis, PageObservation, SourceFact
 
-REQUIRED_FACTS = ("material", "dimensions", "pack_quantity", "use_cases")
 FIELD_LABELS = {
     "material": "材质",
     "dimensions": "尺寸及单位",
@@ -50,22 +51,14 @@ class FactConflict(BaseModel):
     message: str
 
 
-class _IntakeDraft(BaseModel):
-    """Language draft only. Its decision fields are never authoritative."""
+class _IntakeDraft(IntakeAnalysis):
+    """Model analysis; source availability and routing remain application-owned."""
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+class AcquisitionResult(IntakeAnalysis):
     ready_for_acceptance: bool
     missing_fields: list[str]
     conflicts: list[FactConflict]
-    questions: list[str] = Field(max_length=12)
-    summary: str = Field(min_length=1, max_length=2000)
-
-
-class AcquisitionResult(_IntakeDraft):
-    """Safe structured output plus actual provider usage, not model-estimated usage."""
-
-    questions: list[str] = Field(max_length=112)
     usage: dict[str, int]
     model: str
     elapsed_seconds: float
@@ -114,20 +107,14 @@ def _program_findings(
     order_input: dict[str, Any], facts: list[dict[str, Any]]
 ) -> tuple[list[str], list[FactConflict]]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    confirmed_keys: set[str] = set()
-    allowed_sources = SELLER_SOURCES | (
-        {"fictional_seller"} if order_input.get("is_demo") is True else set()
-    )
     for fact in facts:
         if not fact["value"] or _normalize(fact["value"]) in UNKNOWN_VALUES:
             continue
         # Competitor/model claims are reference material, never this SKU's confirmed facts.
         if fact["source_kind"] not in REFERENCE_ONLY_SOURCES:
             grouped[fact["key"]].append(fact)
-        if fact["confirmed"] and fact["source_kind"] in allowed_sources:
-            confirmed_keys.add(fact["key"])
 
-    missing = [key for key in REQUIRED_FACTS if key not in confirmed_keys]
+    missing = []
     product_name = order_input.get("product_name")
     if not isinstance(product_name, str) or not product_name.strip():
         missing.insert(0, "product_name")
@@ -150,53 +137,78 @@ def _program_findings(
     return missing, conflicts
 
 
-async def inspect_intake(order_input: dict[str, Any], provider: MiMoProvider) -> AcquisitionResult:
-    """Inspect immutable input. Provider is injected; errors propagate to the workflow.
+def grounded_suggestions(order_input, facts, candidates) -> list[SourceFact]:
+    """Keep source descriptions without treating them as authenticity evidence."""
+    occupied = {fact["key"] for fact in facts if fact["value"] and fact["confirmed"]}
+    page = order_input.get("page_observation") or {}
+    sources = {
+        "product_name": [order_input.get("product_name") or ""],
+        "product_details": [order_input.get("product_details") or ""],
+        "seller_notes": [order_input.get("notes") or ""],
+        "seller_message": [
+            item.get("content", "")
+            for item in order_input.get("messages", [])
+            if item.get("role") == "seller"
+        ],
+        "product_page": [page.get("excerpt", "")] if page.get("status") == "ok" else [],
+    }
+    result, signatures = [], set()
+    for candidate in candidates:
+        key = canonical_key(candidate.key)
+        if key in occupied:
+            continue
+        if not any(candidate.source_quote in text for text in sources[candidate.source]):
+            continue
+        if candidate.value not in candidate.source_quote or (
+            candidate.unit and candidate.unit not in candidate.source_quote
+        ):
+            continue
+        signature = (key, candidate.value, candidate.unit)
+        if signature not in signatures:
+            result.append(candidate.model_copy(update={"key": key}))
+            signatures.add(signature)
+    return result
 
-    ``facts`` from the seller form may omit provenance because that form is the source.
-    If provenance is supplied, only an explicit seller-confirmed source can satisfy a
-    required field. Image observations, documents, competitor data and model guesses
-    require a separate seller-confirmation step. No model-generated fact patch is returned.
-    """
+
+async def inspect_intake(
+    order_input: dict[str, Any], provider: MiMoProvider, *, image_paths=None
+) -> AcquisitionResult:
+    """Analyze supplied information and actual attachments without a fixed attribute gate."""
     facts = _collect_facts(order_input)
     missing, conflicts = _program_findings(order_input, facts)
-    ready = not missing and not conflicts
     context = {
-        "product_name": order_input.get("product_name", ""),
-        "product_details": order_input.get("product_details"),
-        "domestic_product_url": order_input.get("domestic_product_url"),
+        **order_input,
         "facts": facts,
-        "notes": order_input.get("notes"),
-        "messages": order_input.get("messages", []),
-        "program_findings": {
-            "ready_for_acceptance": ready,
-            "missing_fields": missing,
-            "conflicts": [conflict.model_dump() for conflict in conflicts],
-        },
+        "program_conflicts": [item.model_dump() for item in conflicts],
     }
     prompt = files("company").joinpath("prompts/acquisition.md").read_text(encoding="utf-8")
+    content = [{"type": "text", "text": json.dumps(context, ensure_ascii=False)}]
+    for path in (image_paths or [])[:3]:
+        content.append(await asyncio.to_thread(MiMoProvider.image_content, path))
     draft, call = await provider.generate_json(
         _IntakeDraft,
         [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
+            {"role": "user", "content": content if len(content) > 1 else content[0]["text"]},
         ],
-        max_tokens=2048,
+        max_tokens=4096,
     )
-    # Mandatory questions survive even an incorrect model verdict or an empty question list.
-    required_questions = [f"请补充并确认商品的{FIELD_LABELS[key]}。" for key in missing]
-    required_questions.extend(
-        f"{FIELD_LABELS.get(conflict.key, conflict.key)}有不同记录"
-        f"（{'；'.join(conflict.values)}），请确认本次商品的正确值。"
-        for conflict in conflicts
+    payload = draft.model_dump()
+    payload.update(
+        source_facts=grounded_suggestions(order_input, facts, draft.source_facts),
+        page_observation=PageObservation.model_validate(order_input["page_observation"])
+        if order_input.get("page_observation")
+        else None,
+        strategy_version="evidence-intake-v1",
     )
-    questions = list(dict.fromkeys([*required_questions, *draft.questions])) if not ready else []
+    if not image_paths:
+        payload["image_observations"] = []
+    # The owner judges whether to accept; omitted optional specs never hide the decision buttons.
     return AcquisitionResult(
-        ready_for_acceptance=ready,
+        **payload,
+        ready_for_acceptance=not missing,
         missing_fields=missing,
         conflicts=conflicts,
-        questions=questions,
-        summary=draft.summary,
         usage=dict(call.usage),
         model=call.model,
         elapsed_seconds=call.elapsed_seconds,

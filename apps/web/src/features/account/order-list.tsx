@@ -45,7 +45,7 @@ export function MyOrders() {
     {error && <p className="form-notice notice-error" role="alert">{error}</p>}
     {!orders && !error && <p role="status">正在读取你的订单…</p>}
     {orders && <section className="surface account-order-list"><p>{orders.total} 份订单</p>
-      {orders.items.length ? orders.items.map(order => <Link className="account-order" href={`/o/${order.id}`} prefetch={false} key={order.id}><div><strong>{order.product_name}</strong><p>创建于 {formatTime(order.created_at)} · 订单 {order.id.slice(0, 8)}{order.is_demo ? " · 虚构演示" : ""}</p></div><span>{phaseLabel(order.phase)} ↗</span></Link>) : <div className="panel-empty">你还没有提交订单，先提交一件商品资料吧。</div>}
+      {orders.items.length ? orders.items.map(order => <Link className="account-order" href={`/o/${order.id}`} prefetch={false} key={order.id}><div><strong>{order.product_name}</strong><p>创建于 {formatTime(order.created_at)} · 订单 {order.id.slice(0, 8)}</p></div><span>{phaseLabel(order.phase)} ↗</span></Link>) : <div className="panel-empty">你还没有提交订单，先提交一件商品资料吧。</div>}
       {orders.total > 20 && <div className="account-actions"><button className="button button-outline" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - 20))}>上一页</button><span>第 {Math.floor(offset / 20) + 1} 页</span><button className="button button-outline" disabled={offset + 20 >= orders.total} onClick={() => setOffset(value => value + 20)}>下一页</button></div>}
     </section>}
   </>;

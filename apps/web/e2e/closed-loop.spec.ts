@@ -39,7 +39,7 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
   const account = await registerSeller(seller.request);
   const created = await seller.request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: {
     product_name: `Fictional Browser Cable Clips ${Date.now()}`,
-    facts, is_demo: true,
+    product_details: "silicone cable clips, 6 pieces, 4 x 3 x 2 cm, desk use",
   } });
   expect(created.status()).toBe(201);
   const order = await created.json();
@@ -50,6 +50,11 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
   );
   await seller.getByRole("button", { name: "上传参考图", exact: true }).click();
   await expect(seller.getByText("参考图已保存，可在下方查看。", { exact: true })).toBeVisible();
+  await expect.poll(() => phase(seller, order.id), { timeout: 20000 }).toBe("AWAITING_ACCEPTANCE");
+  const supplemented = await seller.request.post(`/api/v1/orders/${order.id}/supplements`, {
+    headers: { "X-CSRF-Token": account.csrf_token }, data: { expected_revision: (await (await seller.request.get(`/api/v1/orders/${order.id}`)).json()).revision, facts },
+  });
+  expect(supplemented.ok()).toBe(true);
   await expect.poll(() => phase(seller, order.id), { timeout: 20000 }).toBe("AWAITING_ACCEPTANCE");
 
   const ownerContext = await browser.newContext({ baseURL: new URL(order.private_url).origin, viewport: { width: 1440, height: 1000 } });
@@ -62,6 +67,10 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     await expect(owner).toHaveURL(/\/internal\/orders$/);
     await owner.goto(`/internal/orders/${order.id}`);
     await expect(owner.getByRole("heading", { name: "Agent 研究与内容产物", exact: true })).toBeVisible();
+    const references = owner.getByRole("region", { name: "商品图片与参考素材" });
+    await expect(references.locator('input[type="file"]')).toHaveCount(0);
+    await expect(references.getByRole("button", { name: /删除参考图|上传参考图/ })).toHaveCount(0);
+    await expect(owner.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
     await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
     await expect.poll(() => phase(owner, order.id), { timeout: 30000 }).toBe("AWAITING_RELEASE");
     await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
@@ -135,14 +144,8 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     expect(published.status).toBe("SIMULATED");
     expect(published.attempt.submit_count).toBe(1);
     expect(published.confirmation.listing_price).toBe("12.99");
-    const publicPage = await browser.newPage();
-    try {
-      await publicPage.goto(published.listing_url);
-      await expect(publicPage.getByRole("heading", { level: 2 })).toHaveText(latestDelivery.listing.title);
-      await expect(publicPage.getByText(/未发布到 Amazon/).first()).toBeVisible();
-      expect(await publicPage.locator("img").count()).toBeGreaterThanOrEqual(2);
-      await screenshot(publicPage, "simulated-listing-desktop.png");
-    } finally { await publicPage.close(); }
+    expect(published.listing_url).toBeNull();
+    await expect(seller.getByRole("link", { name: "查看模拟商品页 ↗" })).toHaveCount(0);
 
     await seller.getByLabel("需要协助的问题", { exact: true }).fill("模拟工单：请人工确认已经完成的刊登为模拟结果。");
     await seller.getByRole("button", { name: "转交人工处理", exact: true }).click();

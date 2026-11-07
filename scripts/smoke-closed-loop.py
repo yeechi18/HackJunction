@@ -123,8 +123,7 @@ def main(stage: str) -> None:
                 json={
 
                     "product_name": "Fictional Silicone Desk Cable Clips",
-                    "facts": FACTS,
-                    "is_demo": True,
+                    "product_details": "硅胶理线夹，6个装，单件4 x 3 x 2 cm，用于桌面线缆整理。",
                     "notes": "明确标记的虚构模拟订单；非真实商品、实拍、成交或Amazon上架。",
                 },
             )
@@ -191,6 +190,11 @@ def main(stage: str) -> None:
 
         if stage == "m5":
             if current()["phase"] in {"INTAKE", "NEEDS_INFO"}:
+                worker(order_id)
+            if current()["phase"] == "NEEDS_INFO":
+                response = seller.post(private + "/supplements", headers=seller_headers,
+                    json={"expected_revision": current()["revision"], "facts": FACTS})
+                response.raise_for_status()
                 worker(order_id)
             assert current()["phase"] in {
                 "AWAITING_ACCEPTANCE",
@@ -326,13 +330,8 @@ def main(stage: str) -> None:
             )
             assert publication["confirmation"]["listing_price"] == "12.99"
             assert publication["attempt"]["submit_count"] == 1
-            demo_path = urlsplit(publication["listing_url"]).path
-            r = httpx.get("http://127.0.0.1:3000/api/v1" + demo_path, timeout=30)
-            r.raise_for_status()
-            assert r.json()["mode"] == "simulated" and "模拟" in r.json()["notice"]
-            record(
-                "m6_real_publishing_agent_and_simulated_listing", listing_path=demo_path
-            )
+            assert publication["listing_url"] is None
+            record("m6_real_publishing_agent_and_simulated_record")
             before = len(production()["runs"])
             worker(order_id)
             assert len(production()["runs"]) == before

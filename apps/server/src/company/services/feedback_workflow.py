@@ -75,7 +75,6 @@ async def classify_feedback(
             raise ProviderError("The feedback base version or fact snapshot is unavailable.")
         context = {
             "product_name": order.product_name,
-            "is_demo": order.is_demo,
             "content": request.content,
             "fact_updates": request.fact_updates,
             "facts": snapshot.facts,

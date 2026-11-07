@@ -112,7 +112,7 @@ async def test_confirm_queue_idempotence_and_simulated_completion_are_clear(deli
         provider=provider,
     )
     assert result.mode == "simulated" and result.status == "SIMULATED"
-    assert "/demo-listings/" in result.listing_url
+    assert result.listing_url is None
     again = await publish_confirmed(
         settings,
         item.order_id,
@@ -258,7 +258,7 @@ async def test_stale_or_changed_confirmation_is_rejected(delivery_context, inval
                     package_key=f"{uuid4().hex}.zip",
                     package_sha256="x" * 64,
                     package_byte_size=1,
-                    is_demo=True,
+
                 )
             )
     else:
@@ -370,19 +370,9 @@ async def test_scope_csrf_public_demo_and_safe_snapshot(delivery_context):
         database=app.state.database,
         provider=PlanProvider(),
     )
-    public_id = result.listing_url.rsplit("/", 1)[1]
-    public = await wrong_seller.get(f"/api/v1/demo-listings/{public_id}")
-    assert public.status_code == 200, public.text
-    view = public.json()
-    assert view["status"] == "SIMULATED" and view["mode"] == "simulated"
-    serialized = json.dumps(view)
-    assert "private research" not in serialized and "contact" not in serialized
-    assert "seller_name" not in serialized and "usage" not in serialized
-    assert (await wrong_seller.get(view["images"][0]["url"])).status_code == 200
-    async with app.state.database.sessions() as session, session.begin():
-        (await session.get(Order, item.order_id)).is_demo = False
-    assert (await wrong_seller.get(f"/api/v1/demo-listings/{public_id}")).status_code == 404
-    assert (await wrong_seller.get(view["images"][0]["url"])).status_code == 404
+    assert result.status == "SIMULATED" and result.listing_url is None
+    assert (await wrong_seller.get("/api/v1/demo-listings/retired")).status_code == 404
+    assert (await wrong_seller.get(path + "/deliverables")).status_code == 404
 
 
 @pytest.mark.parametrize("mode", ["production", "sandbox"])

@@ -35,7 +35,6 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   await page.goto("/orders/new");
   await page.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
   await page.getByLabel(/商品名字/).fill(productName);
-  await page.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   await expect(page.getByRole("heading", { name: /资料已保存/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
@@ -61,21 +60,18 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
     const order = await response.json();
     revision = order.revision;
     return order.workflow_status;
-  }).toBe("waiting_for_seller");
+  }).toBe("waiting_for_owner");
   await page.locator(".workspace-toolbar").getByRole("button", { name: /刷新/ }).click();
   await expect(page.locator(".order-identity")).toContainText(`资料版本 ${revision}`);
   await page.getByRole("button", { name: /补充商品资料/ }).click();
-  const dimensions = page.getByLabel(/^尺寸/);
-  await dimensions.fill("4 × 3 × 2");
-  const row = page.locator(".fact-edit-row").filter({ has: dimensions });
-  await row.getByLabel("单位", { exact: true }).fill("cm");
-  await row.getByRole("checkbox").check();
+  await expect(page.locator(".supplement-form .fact-edit-row")).toHaveCount(0);
+  await page.getByLabel("补充说明", { exact: true }).fill("参考尺寸4 × 3 × 2 cm，文案简洁，避免夸大性能。");
   await page.getByRole("button", { name: "保存补充资料", exact: true }).click();
   await expect(page.getByText("补充资料已保存，等待重新审查。", { exact: true })).toBeVisible();
-  await expect(page.getByText("4 × 3 × 2 cm", { exact: true })).toBeVisible();
+  await expect(page.getByText("参考尺寸4 × 3 × 2 cm，文案简洁，避免夸大性能。", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(productName);
-  await expect(page.getByText("4 × 3 × 2 cm", { exact: true })).toBeVisible();
+  await expect(page.getByText("参考尺寸4 × 3 × 2 cm，文案简洁，避免夸大性能。", { exact: true })).toBeVisible();
   expect(new URL(page.url()).hash).toBe("");
 
   const isolated = await browser.newContext();
@@ -92,7 +88,7 @@ test("内部入口要求登录，负责人可查看演示订单并退出", async
   test.skip(!password, "设置 E2E_OWNER_PASSWORD 后验证真实负责人登录；测试不读取或展示本地管理员凭据。");
   const productName = `Playwright 内部演示 ${Date.now()}`;
   const account = await registerSeller(request);
-  const response = await request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: { product_name: productName, facts: [], is_demo: true } });
+  const response = await request.post("/api/v1/orders", { headers: { "X-CSRF-Token": account.csrf_token }, data: { product_name: productName, product_details: "已知硅胶材质，尺寸待核实。" } });
   expect(response.status()).toBe(201);
   await page.goto("/internal/orders");
   await expect(page.getByRole("heading", { name: "请先登录工作台" })).toBeVisible();
@@ -104,7 +100,8 @@ test("内部入口要求登录，负责人可查看演示订单并退出", async
   await page.getByRole("link", { name: new RegExp(productName) }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(productName);
   await expect(page.getByRole("heading", { name: "卖家信息", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "提交接单批准", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "提交接单批准", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "提交拒绝接单", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: /退出登录/ }).click();
   await expect(page).toHaveURL(/\/internal\/login$/);
   await page.goto("/internal/orders");

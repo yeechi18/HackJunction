@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from company.domain.facts import canonical_key
+from company.schemas.intake import IntakeAnalysis
 
 
 class InputModel(BaseModel):
@@ -24,11 +25,9 @@ class ProductFact(InputModel):
 
 class SubmitOrder(InputModel):
     product_name: str = Field(min_length=1, max_length=300)
-    product_details: str | None = Field(default=None, min_length=1, max_length=10000)
+    product_details: str = Field(min_length=1, max_length=10000)
     domestic_product_url: str | None = Field(default=None, max_length=2000)
-    facts: list[ProductFact] = Field(default_factory=list, max_length=100)
     notes: str | None = Field(default=None, max_length=10000)
-    is_demo: bool = False
 
     @field_validator("domestic_product_url")
     @classmethod
@@ -44,10 +43,9 @@ class SubmitOrder(InputModel):
 
 
 class CreateOrder(SubmitOrder):
-    """Internal creation input; public seller identity is resolved from the account."""
+    """Internal creation input; structured facts are only accepted by trusted callers."""
 
-    seller_name: str = Field(min_length=1, max_length=200)
-    contact: str | None = Field(default=None, max_length=500)
+    facts: list[ProductFact] = Field(default_factory=list, max_length=100)
 
 
 class CreatedOrder(BaseModel):
@@ -66,8 +64,8 @@ class OrderSummary(BaseModel):
     product_details: str | None = None
     domestic_product_url: str | None = None
     facts: list[ProductFact]
+    intake_analysis: IntakeAnalysis | None = None
     notes: str | None
-    is_demo: bool
     created_at: datetime
     updated_at: datetime
     allowed_actions: list[str]

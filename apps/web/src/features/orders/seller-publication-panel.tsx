@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
 import type { components } from "@/lib/generated/api";
@@ -32,12 +31,12 @@ function FeedbackForm({ order, csrfToken, delivery, disabled, onQueued, onBusy, 
   const stale = baseRevision !== order.revision;
   const allowed = order.allowed_actions.includes("feedback") && !disabled;
   const selectedFacts = normalizedFacts(facts);
-  const complete = ["material", "dimensions", "pack_quantity", "use_cases"].every(key => selectedFacts.some(fact => fact.key === key)) && selectedFacts.every(fact => fact.confirmed);
+  const complete = selectedFacts.length > 0 && selectedFacts.every(fact => fact.confirmed);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || disabled || stale || !allowed || !csrfToken || !content.trim()) return;
-    if (updateFacts && !complete) { setError("请保留并填写材质、尺寸、包装数量和适用范围，并逐项勾选已核实。"); return; }
+    if (updateFacts && !complete) { setError("请核实你本次明确修改的属性；无需补齐固定参数。"); return; }
     const body = JSON.stringify({ expected_revision: baseRevision, version_id: delivery.version_id, content: content.trim(), fact_updates: updateFacts ? selectedFacts : null });
     if (submission.current?.body !== body) submission.current = { body, key: crypto.randomUUID() };
     setBusy(true); onBusy(true); setError("");
@@ -102,16 +101,10 @@ function ConfirmationForm({ order, csrfToken, delivery, disabled, onQueued, onBu
     {stale && <p className={styles.warning}>当前商品事实已变化，旧版确认不可使用。请等待新版本交付后重新确认。</p>}
     <div className={styles.priceFields}><div><label htmlFor={`${id}-price`}>售价（USD）</label><input id={`${id}-price`} inputMode="decimal" required maxLength={9} value={price} disabled={busy || !allowed} onChange={event => { setPrice(event.target.value); setConsent(false); }} placeholder="例如 12.99" /></div><div><label htmlFor={`${id}-currency`}>币种</label><input id={`${id}-currency`} value="USD" readOnly tabIndex={-1} /></div></div>
     <label htmlFor={`${id}-sku`}>卖家 SKU</label><input id={`${id}-sku`} required maxLength={100} value={sku} disabled={busy || !allowed} onChange={event => { setSku(event.target.value); setConsent(false); }} placeholder="填写这件商品的唯一 SKU" />
-    <label className={styles.checkbox}><input type="checkbox" required checked={consent} disabled={busy || !allowed || !normalizedPrice || !sku.trim()} onChange={event => setConsent(event.target.checked)} /><span>我已检查第 {delivery.version_number} 版文案和图片，确认售价 <strong>USD {normalizedPrice ?? "待填写"}</strong>、SKU <strong>{sku.trim() || "待填写"}</strong>，并同意为{delivery.is_demo ? "虚构样例" : "本单商品"}生成模拟刊登记录。不会向 Amazon 提交。</span></label>
+    <label className={styles.checkbox}><input type="checkbox" required checked={consent} disabled={busy || !allowed || !normalizedPrice || !sku.trim()} onChange={event => setConsent(event.target.checked)} /><span>我已检查第 {delivery.version_number} 版文案和图片，确认售价 <strong>USD {normalizedPrice ?? "待填写"}</strong>、SKU <strong>{sku.trim() || "待填写"}</strong>，并同意为本单商品生成模拟刊登记录。不会向 Amazon 提交。</span></label>
     {error && <p className={styles.error} role="alert">{error}</p>}
     <button className="button button-dark button-small" type="submit" disabled={busy || !allowed || !csrfToken || !consent || !normalizedPrice || !sku.trim()}>{busy ? "正在排队…" : "确认本版并模拟上架"}</button>
   </form>;
-}
-
-function demoPath(value: string | null): string | null {
-  if (!value) return null;
-  try { const path = new URL(value, "http://local.invalid").pathname; return /^\/demo-listings\/[0-9a-f]{32}$/.test(path) ? path : null; }
-  catch { return null; }
 }
 
 function PublicationWorkspace({ order, csrfToken, refresh, viewedVersionId = null }: Props) {
@@ -158,7 +151,6 @@ function PublicationWorkspace({ order, csrfToken, refresh, viewedVersionId = nul
   const requestPending = Boolean(queuedId || order.pending_command_id || serverPendingId || submitting);
   const disabled = requestPending || !viewingLatest;
   const simulated = publication?.mode === "simulated";
-  const listing = publication?.status === "SIMULATED" && simulated ? demoPath(publication.listing_url) : null;
   function queued(result: Queued) { setQueuedId(result.command_id); setNotice("请求已入队，处理进度与实际结果会在订单中更新。"); setRevision(current => current + 1); }
 
   return <section className={`surface workspace-panel ${styles.panel}`} aria-label="卖家反馈与发布确认">
@@ -169,9 +161,8 @@ function PublicationWorkspace({ order, csrfToken, refresh, viewedVersionId = nul
     {publication && <div className={styles.status}><span>实际发布状态</span><strong>{statusLabels[publication.status] ?? "等待状态更新"}</strong></div>}
     {publication?.status === "UNKNOWN" && <p className={styles.warning}>结果仍待核对，请联系负责人检查记录，暂不要重复确认发布。</p>}
     {publication?.confirmation && <p className={styles.hint}>{publication.confirmation.valid ? "已保存的确认" : "已失效的历史确认"}：USD {publication.confirmation.listing_price} · SKU {publication.confirmation.seller_sku}</p>}
-    {listing && <Link className={`button button-outline button-small ${styles.demoLink}`} href={listing}>查看模拟商品页 ↗</Link>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
-    {latest ? <><div className={styles.version}><strong>当前已交付：第 {latest.version_number} 版</strong><span>{latest.is_demo ? "虚构样例" : "商品资料"} · {latest.images.length} 张图片</span><p lang="en-US">{latest.listing.title}</p></div>
+    {latest ? <><div className={styles.version}><strong>当前已交付：第 {latest.version_number} 版</strong><span>商品资料 · {latest.images.length} 张图片</span><p lang="en-US">{latest.listing.title}</p></div>
       {!viewingLatest && <p className={styles.warning} role="status">正在查看历史交付版本，或最新版本尚未加载。请到上方“已放行交付包”切换并查看最新第 {latest.version_number} 版，再提交反馈或确认。</p>}
       <FeedbackForm key={`feedback-${latest.version_id}`} order={order} csrfToken={csrfToken} delivery={latest} disabled={disabled} onQueued={queued} onBusy={setSubmitting} refresh={refresh} />
       {simulated ? <ConfirmationForm key={`confirmation-${latest.version_id}-${order.revision}-${viewedVersionId ?? "unviewed"}`} order={order} csrfToken={csrfToken} delivery={latest} disabled={disabled} onQueued={queued} onBusy={setSubmitting} refresh={refresh} /> : <p className={styles.warning}>当前发布模式暂不可用，请联系负责人核实发布配置。</p>}

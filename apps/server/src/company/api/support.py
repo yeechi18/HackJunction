@@ -1,4 +1,4 @@
-"""Scoped support, measured human activity and explicit owner retry requests."""
+"""Scoped support and explicit owner retry requests."""
 
 from typing import Literal
 from uuid import UUID
@@ -8,8 +8,6 @@ from fastapi import APIRouter, Depends, Header, Request
 from company.api.dependencies import DB, Configuration, Owner, owner_write
 from company.api.orders import read_access, seller_write
 from company.schemas.support import (
-    ActiveTimeInput,
-    ActiveTimeView,
     OrderMetrics,
     RetryInput,
     RetryQueued,
@@ -66,21 +64,6 @@ async def reply(
     idempotency_key: str | None = Header(default=None, min_length=1, max_length=128),
 ) -> SupportTicketView:
     return await support.owner_reply(database, ticket_id, body, idempotency_key)
-
-
-@router.post(
-    "/internal/orders/{order_id}/time-entries",
-    response_model=ActiveTimeView,
-    status_code=201,
-    dependencies=[Depends(owner_write)],
-)
-async def active_time(
-    order_id: UUID,
-    body: ActiveTimeInput,
-    database: DB,
-    idempotency_key: str | None = Header(default=None, min_length=1, max_length=128),
-) -> ActiveTimeView:
-    return await support.add_active_time(database, order_id, body, idempotency_key)
 
 
 @router.get("/internal/orders/{order_id}/metrics", response_model=OrderMetrics)

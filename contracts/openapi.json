@@ -891,122 +891,7 @@
         }
       }
     },
-    "/api/v1/internal/orders/{order_id}/production/start": {
-      "post": {
-        "tags": [
-          "internal production"
-        ],
-        "summary": "Start Production",
-        "operationId": "start_production_api_v1_internal_orders__order_id__production_start_post",
-        "parameters": [
-          {
-            "name": "order_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Order Id"
-            }
-          },
-          {
-            "name": "idempotency-key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "title": "Idempotency-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProductionStartInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueuedCommand"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/internal/orders/{order_id}/evidence": {
-      "post": {
-        "tags": [
-          "internal production"
-        ],
-        "summary": "Create Evidence",
-        "operationId": "create_evidence_api_v1_internal_orders__order_id__evidence_post",
-        "parameters": [
-          {
-            "name": "order_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Order Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvidenceInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvidenceView"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "get": {
         "tags": [
           "internal production"
@@ -1562,98 +1447,6 @@
         }
       }
     },
-    "/api/v1/demo-listings/{public_id}": {
-      "get": {
-        "tags": [
-          "seller publication"
-        ],
-        "summary": "Demo Listing",
-        "operationId": "demo_listing_api_v1_demo_listings__public_id__get",
-        "parameters": [
-          {
-            "name": "public_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Public Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DemoListingView"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/demo-listings/{public_id}/assets/{asset_id}": {
-      "get": {
-        "tags": [
-          "seller publication"
-        ],
-        "summary": "Demo Image",
-        "operationId": "demo_image_api_v1_demo_listings__public_id__assets__asset_id__get",
-        "parameters": [
-          {
-            "name": "public_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Public Id"
-            }
-          },
-          {
-            "name": "asset_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Asset Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/orders/{order_id}/support-requests": {
       "post": {
         "tags": [
@@ -1902,77 +1695,6 @@
         }
       }
     },
-    "/api/v1/internal/orders/{order_id}/time-entries": {
-      "post": {
-        "tags": [
-          "support and operations"
-        ],
-        "summary": "Active Time",
-        "operationId": "active_time_api_v1_internal_orders__order_id__time_entries_post",
-        "parameters": [
-          {
-            "name": "order_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Order Id"
-            }
-          },
-          {
-            "name": "idempotency-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Idempotency-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ActiveTimeInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActiveTimeView"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/internal/orders/{order_id}/metrics": {
       "get": {
         "tags": [
@@ -2154,10 +1876,6 @@
             "type": "string",
             "title": "Phase"
           },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2174,7 +1892,6 @@
           "id",
           "product_name",
           "phase",
-          "is_demo",
           "created_at",
           "updated_at"
         ],
@@ -2190,7 +1907,7 @@
           },
           "password": {
             "type": "string",
-            "maxLength": 12,
+            "maxLength": 18,
             "minLength": 8,
             "format": "password",
             "title": "Password",
@@ -2255,64 +1972,6 @@
           "expires_at"
         ],
         "title": "AccountSessionView"
-      },
-      "ActiveTimeInput": {
-        "properties": {
-          "seconds": {
-            "type": "integer",
-            "maximum": 86400.0,
-            "minimum": 1.0,
-            "title": "Seconds"
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 2000,
-            "minLength": 1,
-            "title": "Reason"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "seconds",
-          "reason"
-        ],
-        "title": "ActiveTimeInput"
-      },
-      "ActiveTimeView": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "seconds": {
-            "type": "integer",
-            "title": "Seconds"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "owner_active_seconds": {
-            "type": "integer",
-            "title": "Owner Active Seconds"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "seconds",
-          "reason",
-          "created_at",
-          "owner_active_seconds"
-        ],
-        "title": "ActiveTimeView"
       },
       "AgentRunView": {
         "properties": {
@@ -2756,6 +2415,45 @@
         ],
         "title": "ConfirmationView"
       },
+      "ContentBrief": {
+        "properties": {
+          "product_type": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Product Type",
+            "default": ""
+          },
+          "audience": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Audience",
+            "default": ""
+          },
+          "selling_points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Selling Points"
+          },
+          "english_title": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "English Title",
+            "default": ""
+          },
+          "english_description": {
+            "type": "string",
+            "maxLength": 1500,
+            "title": "English Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ContentBrief"
+      },
       "CreatedOrder": {
         "properties": {
           "id": {
@@ -2991,10 +2689,6 @@
             "type": "array",
             "title": "Images"
           },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
-          },
           "delivered_at": {
             "type": "string",
             "format": "date-time",
@@ -3016,74 +2710,10 @@
           "faqs",
           "pricing",
           "images",
-          "is_demo",
           "delivered_at",
           "download_url"
         ],
         "title": "DeliveryView"
-      },
-      "DemoListingView": {
-        "properties": {
-          "public_id": {
-            "type": "string",
-            "title": "Public Id"
-          },
-          "mode": {
-            "type": "string",
-            "const": "simulated",
-            "title": "Mode",
-            "default": "simulated"
-          },
-          "status": {
-            "type": "string",
-            "const": "SIMULATED",
-            "title": "Status",
-            "default": "SIMULATED"
-          },
-          "notice": {
-            "type": "string",
-            "title": "Notice",
-            "default": "模拟商品页：未发布到 Amazon，不代表真实成交或销量。"
-          },
-          "listing": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Listing"
-          },
-          "faqs": {
-            "items": {},
-            "type": "array",
-            "title": "Faqs"
-          },
-          "images": {
-            "items": {},
-            "type": "array",
-            "title": "Images"
-          },
-          "listing_price": {
-            "type": "string",
-            "title": "Listing Price"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency"
-          },
-          "marketplace": {
-            "type": "string",
-            "title": "Marketplace"
-          }
-        },
-        "type": "object",
-        "required": [
-          "public_id",
-          "listing",
-          "faqs",
-          "images",
-          "listing_price",
-          "currency",
-          "marketplace"
-        ],
-        "title": "DemoListingView"
       },
       "EmailAddress": {
         "properties": {
@@ -3145,86 +2775,6 @@
           "created_at"
         ],
         "title": "EventView"
-      },
-      "EvidenceInput": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Kind",
-            "default": "manual_observation"
-          },
-          "source": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Source"
-          },
-          "source_url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 2000
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Url"
-          },
-          "provider": {
-            "type": "string",
-            "const": "manual",
-            "title": "Provider",
-            "default": "manual"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "success",
-              "partial",
-              "failed"
-            ],
-            "title": "Status",
-            "default": "success"
-          },
-          "observed_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Observed At"
-          },
-          "scope": {
-            "type": "string",
-            "maxLength": 1000,
-            "minLength": 1,
-            "title": "Scope",
-            "default": "Amazon US / this SKU"
-          },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo",
-            "default": false
-          },
-          "content": {
-            "type": "string",
-            "maxLength": 20000,
-            "minLength": 1,
-            "title": "Content"
-          },
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "source",
-          "content"
-        ],
-        "title": "EvidenceInput"
       },
       "EvidenceList": {
         "properties": {
@@ -3460,6 +3010,113 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IntakeAnalysis": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "assessment": {
+            "type": "string",
+            "enum": [
+              "consistent",
+              "uncertain",
+              "inconsistent"
+            ],
+            "title": "Assessment",
+            "default": "uncertain"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeIssue"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Issues"
+          },
+          "image_observations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Image Observations"
+          },
+          "source_facts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceFact"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Source Facts"
+          },
+          "content_brief": {
+            "$ref": "#/components/schemas/ContentBrief"
+          },
+          "page_observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Questions"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version",
+            "default": "evidence-intake-v1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "IntakeAnalysis"
+      },
+      "IntakeIssue": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "concern"
+            ],
+            "title": "Severity"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "basis": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Basis"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "severity",
+          "description",
+          "basis"
+        ],
+        "title": "IntakeIssue"
+      },
       "InternalOrder": {
         "properties": {
           "id": {
@@ -3512,6 +3169,16 @@
             "type": "array",
             "title": "Facts"
           },
+          "intake_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "notes": {
             "anyOf": [
               {
@@ -3522,10 +3189,6 @@
               }
             ],
             "title": "Notes"
-          },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
           },
           "created_at": {
             "type": "string",
@@ -3622,7 +3285,6 @@
           "product_name",
           "facts",
           "notes",
-          "is_demo",
           "created_at",
           "updated_at",
           "allowed_actions",
@@ -3773,10 +3435,6 @@
             "format": "uuid",
             "title": "Order Id"
           },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
-          },
           "publish_mode": {
             "type": "string",
             "title": "Publish Mode"
@@ -3870,10 +3528,6 @@
             "type": "integer",
             "title": "Feedback Requests"
           },
-          "owner_active_seconds": {
-            "type": "integer",
-            "title": "Owner Active Seconds"
-          },
           "open_support_tickets": {
             "type": "integer",
             "title": "Open Support Tickets"
@@ -3889,7 +3543,6 @@
         "type": "object",
         "required": [
           "order_id",
-          "is_demo",
           "publish_mode",
           "recorded_model_calls",
           "calls_by_role",
@@ -3906,7 +3559,6 @@
           "automatic_rework_candidates",
           "failed_reviews",
           "feedback_requests",
-          "owner_active_seconds",
           "open_support_tickets",
           "explanations"
         ],
@@ -3964,6 +3616,16 @@
             "type": "array",
             "title": "Facts"
           },
+          "intake_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "notes": {
             "anyOf": [
               {
@@ -3974,10 +3636,6 @@
               }
             ],
             "title": "Notes"
-          },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
           },
           "created_at": {
             "type": "string",
@@ -4035,7 +3693,6 @@
           "product_name",
           "facts",
           "notes",
-          "is_demo",
           "created_at",
           "updated_at",
           "allowed_actions",
@@ -4068,6 +3725,39 @@
           "expires_at"
         ],
         "title": "OwnerSessionView"
+      },
+      "PageObservation": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt",
+            "default": ""
+          },
+          "retrieved_at": {
+            "type": "string",
+            "title": "Retrieved At",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "status"
+        ],
+        "title": "PageObservation"
       },
       "ProductFact": {
         "properties": {
@@ -4108,21 +3798,6 @@
           "value"
         ],
         "title": "ProductFact"
-      },
-      "ProductionStartInput": {
-        "properties": {
-          "expected_revision": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Expected Revision"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "expected_revision"
-        ],
-        "title": "ProductionStartInput"
       },
       "ProductionView": {
         "properties": {
@@ -4717,6 +4392,60 @@
         ],
         "title": "SnapshotView"
       },
+      "SourceFact": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Key"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "product_name",
+              "product_details",
+              "seller_notes",
+              "seller_message",
+              "product_page"
+            ],
+            "title": "Source"
+          },
+          "source_quote": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Source Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "source",
+          "source_quote"
+        ],
+        "title": "SourceFact"
+      },
       "SubmitOrder": {
         "properties": {
           "product_name": {
@@ -4726,16 +4455,9 @@
             "title": "Product Name"
           },
           "product_details": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 10000,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
             "title": "Product Details"
           },
           "domestic_product_url": {
@@ -4750,14 +4472,6 @@
             ],
             "title": "Domestic Product Url"
           },
-          "facts": {
-            "items": {
-              "$ref": "#/components/schemas/ProductFact"
-            },
-            "type": "array",
-            "maxItems": 100,
-            "title": "Facts"
-          },
           "notes": {
             "anyOf": [
               {
@@ -4769,17 +4483,13 @@
               }
             ],
             "title": "Notes"
-          },
-          "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo",
-            "default": false
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "product_name"
+          "product_name",
+          "product_details"
         ],
         "title": "SubmitOrder"
       },

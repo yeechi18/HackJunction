@@ -49,9 +49,9 @@ function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOrder; cs
     finally { setBusy(false); }
   }
 
-  return <section className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>负责人决定</h2><span>仅展示当前合法动作</span></div>
+  return <section className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>负责人决定</h2><span>初审后由负责人决定接单</span></div>
     {submittedMessage && <p className="decision-command-status" role="status">{submittedMessage}</p>}
-    {(canAccept || canReject) && !pendingSubmission ? <><p className="field-help">资料已进入可审批状态。提交决定后先入队，处理结果会通过订单动态更新。</p><div className="decision-actions">{canAccept && <button className="button button-dark" type="button" disabled={busy} onClick={() => decide("accept")}>{busy ? "提交中…" : "提交接单批准"}</button>}{canReject && <button className="button button-outline danger-text" type="button" disabled={busy} onClick={() => decide("reject")}>提交拒绝接单</button>}</div></> : !submittedMessage && <p className="field-help">{order.pending_command_id ? "已有决定等待工作流处理，当前不可重复审批。" : order.phase === "RESEARCH" ? "接单决定已完成，当前等待开展研究。" : order.phase === "REJECTED" ? "本单已拒绝接单。" : "当前没有可执行的接单动作，请查看实际订单进度。"}</p>}
+    {(["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"].includes(order.phase)) && !pendingSubmission ? <><p className="field-help">{canAccept ? "初审已整理，可结合资料、图片和文案方向决定是否接单。" : "正在整理初审意见，完成后即可批准或拒绝接单；无需等待固定商品参数齐全。"}</p><div className="decision-actions">{<button className="button button-dark" type="button" disabled={busy || !canAccept} onClick={() => decide("accept")}>{busy ? "提交中…" : "提交接单批准"}</button>}{<button className="button button-outline danger-text" type="button" disabled={busy || !canReject} onClick={() => decide("reject")}>提交拒绝接单</button>}</div></> : !submittedMessage && <p className="field-help">{order.pending_command_id ? "已有决定等待工作流处理，当前不可重复审批。" : order.phase === "RESEARCH" ? "已批准接单，Agent将自动开展研究与内容制作。" : order.phase === "REJECTED" ? "本单已拒绝接单。" : "当前没有可执行的接单动作，请查看实际订单进度。"}</p>}
     {pendingSubmission && <p className="command-queued">已入队 · 等待实际处理结果</p>}
     {error && <ErrorNotice>{error}</ErrorNotice>}
   </section>;

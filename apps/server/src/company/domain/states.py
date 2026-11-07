@@ -24,8 +24,6 @@ def allowed_actions(phase: str, *, internal: bool, pending: bool) -> list[str]:
     if internal:
         if phase == OrderPhase.AWAITING_ACCEPTANCE:
             return ["accept", "reject"]
-        if phase == OrderPhase.RESEARCH:
-            return ["produce"]
         if phase == OrderPhase.AWAITING_RELEASE:
             return ["release", "veto"]
         return []

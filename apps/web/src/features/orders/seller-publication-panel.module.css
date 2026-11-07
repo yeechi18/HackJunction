@@ -31,5 +31,4 @@
 .notice { color: #739057; border-color: #a6bd88; background: #eef4e4; margin-top: 16px; }
 .warning { margin-top: 12px; }
 .warning button { display: block; margin-top: 8px; }
-.demoLink { margin-top: 17px; }
 @media(max-width: 600px) { .priceFields { gap: 10px; } .facts { padding: 13px 10px; } .form>label,.priceFields label { font-size: 11px; } }

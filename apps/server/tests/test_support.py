@@ -150,7 +150,7 @@ async def test_support_does_not_stop_or_restart_production(context):
         )
 
 
-async def test_active_time_excludes_waiting_and_metrics_count_only_recorded_usage(context):
+async def test_retired_time_tracking_is_absent_and_metrics_count_only_recorded_usage(context):
     _, app, _, _, login_owner = context
     customer, order, csrf = await seller(context)
     owner, owner_csrf = await login_owner()
@@ -198,31 +198,12 @@ async def test_active_time_excludes_waiting_and_metrics_count_only_recorded_usag
         )
     base = f"/api/v1/internal/orders/{order['id']}"
     assert (await customer.get(base + "/metrics")).status_code == 401
-    before = (await owner.get(base + "/metrics")).json()
-    assert before["owner_active_seconds"] == 0
-    entry_headers = {"X-CSRF-Token": owner_csrf, "Idempotency-Key": "active-30s"}
     assert (
-        await owner.post(base + "/time-entries", json={"seconds": 30, "reason": "人工核对尺寸"})
-    ).status_code == 403
-    first = await owner.post(
-        base + "/time-entries",
-        json={"seconds": 30, "reason": "人工核对尺寸"},
-        headers=entry_headers,
-    )
-    repeated = await owner.post(
-        base + "/time-entries",
-        json={"seconds": 30, "reason": "人工核对尺寸"},
-        headers=entry_headers,
-    )
-    assert first.status_code == 201 and repeated.json()["id"] == first.json()["id"]
-    await owner.post(
-        base + "/time-entries",
-        json={"seconds": 15, "reason": "回复客服"},
-        headers={**entry_headers, "Idempotency-Key": "active-15s"},
-    )
+        await owner.post(base + "/time-entries", json={"seconds": 30, "reason": "retired"})
+    ).status_code == 404
     metrics = (await owner.get(base + "/metrics")).json()
-    assert metrics["owner_active_seconds"] == 45  # Not two days of elapsed ticket waiting.
-    assert metrics["is_demo"] is True and metrics["recorded_model_calls"] == 2
+    assert "owner_active_seconds" not in metrics and "is_demo" not in metrics
+    assert metrics["recorded_model_calls"] == 2
     assert metrics["tokens"] == {"input_tokens": 30, "output_tokens": 12, "total_tokens": 42}
     assert (
         Decimal(metrics["known_cost_usd"]) == Decimal("0.002") and metrics["total_cost_usd"] is None

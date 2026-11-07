@@ -28,8 +28,8 @@
 
 | 位置 | 当前实现 |
 |---|---|
-| `apps/web/src/app/`、`features/orders/` | 卖家建单、私有访问、资料确认、参考图上传、交付预览/ZIP、反馈、售价与SKU确认、模拟商品页 |
-| `apps/web/src/features/internal/` | 负责人登录、订单列表、人工证据、研究/审校/版本对比、按当前版本放行或否决 |
+| `apps/web/src/app/`、`features/orders/` | 卖家建单、私有访问、初审与说明补充、参考图上传、交付预览/ZIP、反馈、售价与SKU确认、账号内模拟刊登记录 |
+| `apps/web/src/features/internal/` | 负责人登录、订单列表、只读证据、研究/审校/版本对比、按当前版本放行或否决 |
 | `apps/web/src/features/operations/` | 人工接管/回复/结束、实际处理计时、模型用量、技术故障恢复 |
 | `apps/server/src/company/api/`、`services/` | API权限、订单状态、持久任务、版本/交付/发布及支持业务 |
 | `apps/server/src/company/agents/`、`prompts/`、`workflows/` | 获客、研究、生成、审校、发布五种职责及反馈整理；LangGraph等待、恢复、受控返修 |
@@ -300,3 +300,5 @@
 | `docs/调研部分.md` | 215 |
 
 </details>
+
+商品初审新增`schemas/intake.py`结构化分析、`providers/product_page.py`受限公开页面读取、`services/intake_sources.py`真实图片/页面输入准备；前端`features/orders/intake-analysis.tsx`两端共享展示。

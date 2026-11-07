@@ -97,16 +97,3 @@ class PublicationView(BaseModel):
     notice: str
     confirmation: ConfirmationView | None
     attempt: AttemptView | None
-
-
-class DemoListingView(BaseModel):
-    public_id: str
-    mode: Literal["simulated"] = "simulated"
-    status: Literal["SIMULATED"] = "SIMULATED"
-    notice: str = "模拟商品页：未发布到 Amazon，不代表真实成交或销量。"
-    listing: dict
-    faqs: list
-    images: list
-    listing_price: str
-    currency: str
-    marketplace: str

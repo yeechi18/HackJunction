@@ -36,7 +36,7 @@ def main():
         assert login.status_code == 200, "Verified seller login failed."
         created = client.post("/orders", headers={"X-CSRF-Token": login.json()["csrf_token"]}, json={
             "product_name": "[M3验收]虚构桌面理线夹",
-            "facts": FACTS, "is_demo": True,
+            "product_details": "硅胶理线夹，6个装，用于桌面线缆整理，尺寸待补充。",
         })
         assert created.status_code == 201, "Could not create the fictional intake order."
         order = created.json()
@@ -48,10 +48,10 @@ def main():
 
         worker(order_id)
         current = client.get(f"/orders/{order_id}").json()
-        assert current["phase"] == "NEEDS_INFO", "Missing dimensions must block acceptance."
+        assert current["phase"] == "AWAITING_ACCEPTANCE", "Optional dimensions must not block owner review."
         messages = client.get(f"/orders/{order_id}/messages").json()["items"]
         assert any(message["role"] == "assistant" and message["content"] for message in messages)
-        checks.append("real_intake_requests_missing_dimensions")
+        checks.append("real_intake_without_optional_dimensions_reaches_owner")
 
         complete_facts = [*FACTS, {
             "key": "dimensions", "value": "4 x 3 x 2", "unit": "cm", "confirmed": True,

@@ -64,9 +64,7 @@ async def create(
     account = await database.get(SellerAccount, session.account_id)
     if account is None:
         raise HTTPException(401, "Seller account is unavailable.")
-    creation = CreateOrder(
-        **body.model_dump(), seller_name=account.display_name, contact=account.email
-    )
+    creation = CreateOrder(**body.model_dump())
     return await orders.create_order(database, settings, creation, seller_account_id=account.id)
 
 

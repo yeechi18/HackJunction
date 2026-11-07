@@ -9,13 +9,12 @@ test("获客聊天显示处理反馈，人工接管暂停，负责人结束后�
   await seller.getByLabel("商品明细信息", { exact: false }).fill("黑色硅胶理线夹，适合整理桌面线缆。");
   const name = `虚构聊天理线夹 ${Date.now()}`;
   await seller.getByLabel(/商品名字/).fill(name);
-  await seller.getByRole("checkbox", { name: "这是一份虚构演示订单" }).check();
   await seller.getByRole("button", { name: /保存资料，创建订单/ }).click();
   const url = new URL(await seller.getByLabel("私有订单链接").inputValue());
   const orderId = url.pathname.split("/").pop();
   await seller.getByRole("link", { name: /查看订单进度/ }).click();
   await seller.waitForURL(current => current.pathname === url.pathname && !current.hash);
-  await expect.poll(async () => (await (await seller.request.get(`/api/v1/orders/${orderId}`)).json()).workflow_status).toBe("waiting_for_seller");
+  await expect.poll(async () => (await (await seller.request.get(`/api/v1/orders/${orderId}`)).json()).workflow_status).toBe("waiting_for_owner");
   await seller.locator(".workspace-toolbar").getByRole("button", { name: /刷新/ }).click();
   const message = `请继续核对我的资料 ${Date.now()}`;
   const sent = seller.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/v1/orders/${orderId}/messages`);

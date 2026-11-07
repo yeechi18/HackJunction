@@ -35,7 +35,7 @@ async function persist(passed) {
   await mkdir(path.dirname(reportPath), { recursive: true });
   await writeFile(reportPath, JSON.stringify({
     created_at: new Date().toISOString(), public_url: publicUrl ?? null,
-    passed, checks, upload_stages: uploadStages, is_demo: true, publish_mode: 'simulated',
+    passed, checks, upload_stages: uploadStages, publish_mode: 'simulated',
     ...(!passed ? { failed_stage: activeStage, error_name: failureName } : {}),
     scope: 'HTTPS access, production cookies, permissions, CSRF and actual image upload/download',
     full_production_approved: false,
@@ -154,13 +154,9 @@ try {
   await check('fictional_intake_private_link_uses_the_public_origin', async () => {
     const response = await seller.post('/api/v1/orders', { headers: { 'X-CSRF-Token': sellerCsrf }, data: {
       product_name: `Fictional HTTPS Desk Cable Clips ${Date.now()}`,
-      is_demo: true,
+      product_details: "硅胶理线夹，6个装，用于整理桌面线缆，尺寸待核实。",
       notes: '虚构公网验收，仅测试缺尺寸获客与访问控制，不批准生产或发布。',
-      facts: [
-        { key: 'material', value: 'silicone', confirmed: true },
-        { key: 'pack_quantity', value: '6', unit: 'pieces', confirmed: true },
-        { key: 'use_cases', value: 'Organizing desk cables', confirmed: true },
-      ],
+
     } });
     assert.equal(response.status(), 201);
     const created = await response.json();

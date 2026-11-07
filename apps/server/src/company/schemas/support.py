@@ -33,19 +33,6 @@ class SupportTicketList(BaseModel):
     ai_reply_paused: bool | None = None
 
 
-class ActiveTimeInput(InputModel):
-    seconds: int = Field(strict=True, ge=1, le=86400)
-    reason: str = Field(min_length=1, max_length=2000)
-
-
-class ActiveTimeView(BaseModel):
-    id: UUID
-    seconds: int
-    reason: str
-    created_at: datetime
-    owner_active_seconds: int
-
-
 class RetryInput(InputModel):
     command_id: UUID
     expected_revision: int = Field(ge=1)
@@ -68,7 +55,6 @@ class TokenTotals(BaseModel):
 
 class OrderMetrics(BaseModel):
     order_id: UUID
-    is_demo: bool
     publish_mode: str
     recorded_model_calls: int
     calls_by_role: dict[str, int]
@@ -85,6 +71,5 @@ class OrderMetrics(BaseModel):
     automatic_rework_candidates: int
     failed_reviews: int
     feedback_requests: int
-    owner_active_seconds: int
     open_support_tickets: int
     explanations: dict[str, str]
