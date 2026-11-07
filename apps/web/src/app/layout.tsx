@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { ShelfwiseHeader } from "@/components/shelfwise-header";
 import "./globals.css";
 import "./portal.css";
+import "./shelfwise.css";
 
 export const metadata: Metadata = {
   title: "上架有方 Shelfwise｜让好商品，走向世界",
@@ -8,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}</body></html>;
+  return <html lang="zh-CN"><body><ShelfwiseHeader />{children}</body></html>;
 }

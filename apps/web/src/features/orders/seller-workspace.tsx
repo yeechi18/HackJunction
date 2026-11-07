@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AccessError, ErrorNotice, LoadingPanel } from "@/components/async-feedback";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
 import { editableFacts, FactEditor, normalizedFacts } from "./fact-editor";
-import { EventsPanel, FactsPanel, MessagesPanel, OrderHeading, WorkflowNotice } from "./order-panels";
-import type { Message, Order } from "./types";
+import { FactsPanel, WorkflowNotice } from "./order-panels";
+import { formatTime, type Message, type Order, type OrderEvent } from "./types";
+import { orderStatusLabel } from "./workflow-progress";
+import styles from "./seller-workspace.module.css";
 import { useWorkspace } from "./use-workspace";
 import { ReferenceAssetsPanel } from "./reference-assets-panel";
-import { DeliverablesPanel } from "./deliverables-panel";
-import { SellerSupportPanel } from "@/features/operations/support-panel";
-import { SellerPublicationPanel } from "./seller-publication-panel";
 
 function SupplementForm({ order, csrfToken, onSaved, onCancel, refresh }: { order: Order; csrfToken: string; onSaved: () => void; onCancel: () => void; refresh: () => void }) {
   const [facts, setFacts] = useState(() => editableFacts(order.facts));
@@ -55,20 +54,143 @@ function MessageComposer({ order, csrfToken, onSent }: { order: Order; csrfToken
   }
 
   if (!allowed && !content.trim()) return <p className="field-help message-composer-closed">当前订单状态暂不接受新消息。</p>;
-  return <form className="message-composer" onSubmit={submit}><label htmlFor="seller-message">给这份订单留个消息</label><textarea id="seller-message" value={content} onChange={event => setContent(event.target.value)} placeholder="补充你的想法或需要说明的事项。" maxLength={10000} rows={3} disabled={busy} readOnly={!allowed} required /><div><p className="field-help">{allowed ? "消息会交给获客 Agent，结合本版资料继续审查。" : "当前阶段不能发送，未发送草稿仍保留在此。"}</p><button type="submit" className="button button-dark button-small" disabled={busy || !content.trim() || !allowed}>{busy ? "发送中…" : "发送消息"}<span aria-hidden="true">↗</span></button></div>{error && <ErrorNotice>{error}</ErrorNotice>}</form>;
+  return <form className="message-composer" onSubmit={submit}><label htmlFor="seller-message">给这份订单留个消息</label><textarea id="seller-message" value={content} onChange={event => setContent(event.target.value)} placeholder="补充你的想法或需要说明的事项。" maxLength={10000} rows={3} disabled={busy} readOnly={!allowed} required /><div><p className="field-help">{allowed ? "消息会交给上架顾问，结合本版资料继续审查。" : "当前阶段不能发送，未发送草稿仍保留在此。"}</p><button type="submit" className="button button-dark button-small" disabled={busy || !content.trim() || !allowed}>{busy ? "发送中…" : "发送消息"}<span aria-hidden="true">↗</span></button></div>{error && <ErrorNotice>{error}</ErrorNotice>}</form>;
+}
+
+function Conversation({ order, messages, events }: { order: Order; messages: Message[]; events: OrderEvent[] }) {
+  const feed = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const [canJump, setCanJump] = useState(false);
+  const entries = [
+    ...messages.map(message => ({ type: "message" as const, at: message.created_at, message })),
+    ...events.map(event => ({ type: "event" as const, at: event.created_at, event })),
+  ].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
+  const latest = entries.at(-1);
+  const latestEvent = entries.filter(entry => entry.type === "event").at(-1);
+  const latestKey = latest?.type === "message" ? `message-${latest.message.id}` : latest?.event.id;
+
+  useEffect(() => {
+    if (following.current && feed.current) feed.current.scrollTop = feed.current.scrollHeight;
+  }, [latestKey, entries.length, order.phase, order.workflow_status]);
+
+  function trackScroll() {
+    const element = feed.current;
+    if (!element) return;
+    following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+    setCanJump(!following.current);
+  }
+
+  return (
+    <div className={styles.feedArea}>
+      <div ref={feed} className={styles.feed} tabIndex={0} aria-label="会话记录" onScroll={trackScroll}>
+        <ol className={styles.transcript} role="log" aria-label="消息和进度更新">
+          <li className={styles.message}>
+            <span className={styles.avatar} aria-hidden="true">✦</span>
+            <div>
+              <div className={styles.byline}><strong>上架顾问</strong></div>
+              <div className={styles.bubble}>你好！我会在这里同步「{order.product_name}」的处理进度。你可以在这里留言、补充商品资料或上传参考图。</div>
+            </div>
+          </li>
+          {entries.map(entry => {
+            if (entry.type === "event") {
+              return (
+                <li className={styles.activity} key={`event-${entry.event.id}`}>
+                  <details open={entry === latestEvent}>
+                    <summary><span aria-hidden="true">⌁</span> 订单动态 <time dateTime={entry.at}>{formatTime(entry.at)}</time></summary>
+                    <p>{entry.event.message}</p>
+                  </details>
+                </li>
+              );
+            }
+            const { message } = entry;
+            const seller = message.role === "seller";
+            const author = seller ? "你" : message.role === "owner" ? "负责人" : "上架顾问";
+            return (
+              <li className={`${styles.message} ${seller ? styles.seller : ""}`} key={`message-${message.id}`}>
+                <span className={styles.avatar} aria-hidden="true">{seller ? "你" : author === "负责人" ? "负" : "✦"}</span>
+                <div>
+                  <div className={styles.byline}><strong>{author}</strong><time dateTime={entry.at}>{formatTime(entry.at)}</time></div>
+                  <div className={styles.bubble}>{message.content}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        <div className={styles.current}>
+          <span className={styles.avatar} aria-hidden="true">✦</span>
+          <div>
+            <p className={styles.byline}><strong>上架顾问</strong> · 当前进度</p>
+            <WorkflowNotice order={order} description={order.phase === "AWAITING_SELLER" && order.workflow_status === "waiting_for_seller" ? "你可以在会话中留言，向上架顾问 询问交付确认的后续安排。" : undefined} />
+          </div>
+        </div>
+      </div>
+      {canJump && <button className={styles.jump} type="button" onClick={() => {
+        const element = feed.current;
+        if (!element) return;
+        following.current = true;
+        element.scrollTo({ top: element.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      }}>查看最新进度 ↓</button>}
+    </div>
+  );
 }
 
 export function SellerWorkspace({ orderId }: { orderId: string }) {
   const { data, error, accessDenied, pollIntervalMs, refresh } = useWorkspace(orderId);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState("");
-  const [viewedDelivery, setViewedDelivery] = useState<{ orderId: string; versionId: string | null } | null>(null);
-  const onViewedVersionChange = useCallback((versionId: string | null) => {
-    setViewedDelivery(current => current?.orderId === orderId && current.versionId === versionId ? current : { orderId, versionId });
-  }, [orderId]);
 
   if (accessDenied) return <AccessError />;
   if (!data) return error ? <div><ErrorNotice>{error}</ErrorNotice><AccessError /><button className="button button-outline" type="button" onClick={refresh}>重新连接</button></div> : <LoadingPanel message="正在验证私有访问并读取订单…" />;
   const { order, messages, events, csrfToken, checkedAt } = data;
-  return <><OrderHeading order={order} /><div className="workspace-toolbar"><p>最近更新 {checkedAt} · 进度每 {pollIntervalMs / 1000} 秒刷新</p><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>{error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}{notice && <div className="form-notice notice-success" role="status">{notice}</div>}<WorkflowNotice order={order} /><div className="workspace-grid"><div className="workspace-primary"><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /><SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} /><FactsPanel order={order} /><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />{editing ? <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => { setEditing(false); setNotice("补充资料已保存，等待重新审查。"); refresh(); }} onCancel={() => setEditing(false)} refresh={refresh} /> : order.allowed_actions.includes("supplement") && <button type="button" className="supplement-trigger" onClick={() => { setEditing(true); setNotice(""); }}><span><strong>还有资料要补充？</strong><small>补齐尺寸、确认事实，或调整商品说明。</small></span><span>补充商品资料 ↗</span></button>}<SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><MessagesPanel messages={messages}><MessageComposer order={order} csrfToken={csrfToken} onSent={refresh} /></MessagesPanel></div><aside className="workspace-secondary"><EventsPanel events={events} /><div className="workspace-side-note"><strong>你的专属订单入口</strong><p>此页面仅展示本单的公开进度与资料。请妥善保存创建时获得的完整私有链接。</p></div></aside></div></>;
+  return (
+    <>
+      <header className={styles.heading}>
+        <div>
+          <p className="sw-eyebrow">SHELFWISE / ORDER CONVERSATION</p>
+          <h1>{order.product_name}</h1>
+          <p className={styles.orderMeta}>订单 {order.id.slice(0, 8)} · 资料版本 {order.revision}{order.is_demo && " · 虚构演示"}</p>
+        </div>
+        <section className={styles.summary} aria-label="订单概览">
+          <span className={styles.status}>{orderStatusLabel(order)}</span>
+          <p>Amazon US · 美式英语 · 单 SKU</p>
+          <p>请妥善保存完整私有链接。</p>
+        </section>
+      </header>
+      <div className={styles.layout}>
+        <section className={styles.chat} aria-labelledby="agent-heading">
+          <header className={styles.chatHeader}>
+            <span className={styles.agentIcon} aria-hidden="true">✦</span>
+            <div><h2 id="agent-heading">上架顾问</h2><p>订单进度与沟通记录</p></div>
+            <span className={styles.sync} data-live={!error}>{error ? "同步暂时中断" : "自动同步"}</span>
+          </header>
+          {error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}
+          <Conversation order={order} messages={messages} events={events} />
+          <div className={styles.compose}>
+            <MessageComposer order={order} csrfToken={csrfToken} onSent={refresh} />
+            <div className={styles.syncFooter}>
+              <span>最近检查 {checkedAt} · 每 {pollIntervalMs / 1000} 秒同步</span>
+              <button className="text-button" type="button" onClick={refresh}>刷新 ↻</button>
+            </div>
+          </div>
+        </section>
+        <aside className={styles.sidebar} aria-label="订单资料">
+          <FactsPanel order={order} action={!editing && order.allowed_actions.includes("supplement") ? (
+            <button type="button" className={styles.editButton} onClick={() => {
+              setEditing(true);
+              setNotice("");
+            }}>补充商品资料 <span aria-hidden="true">↗</span></button>
+          ) : undefined} />
+          {notice && <div className="form-notice notice-success" role="status">{notice}</div>}
+          {editing && (
+            <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => {
+              setEditing(false);
+              setNotice("补充资料已保存，等待重新审查。");
+              refresh();
+            }} onCancel={() => setEditing(false)} refresh={refresh} />
+          )}
+          <ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />
+        </aside>
+      </div>
+    </>
+  );
 }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ProductScene } from "./product-scene";
-import { ShelfwiseHeader } from "./shelfwise-header";
 import { ShelfwiseHero } from "./shelfwise-hero";
 
 const features = ["英文商品标题与五点卖点", "英文详情文案与买家 FAQ", "商品图片与图文一致性审校", "竞品研究与定价建议", "完整上架资料包与版本交付", "卖家确认后的模拟发布"];
@@ -20,8 +19,6 @@ export function ShelfwiseHome() {
     return () => observer.disconnect();
   }, []);
   return <div className="sw-home" ref={root}>
-    <a className="skip-link" href="#sw-main">跳到主要内容</a>
-    <ShelfwiseHeader />
     <main id="sw-main">
       <ShelfwiseHero />
       <section className="sw-about" id="about" data-reveal aria-labelledby="sw-about-title"><div className="sw-section-index">01 / MEET SHELFWISE <span>小卖家，也有大市场。</span></div><div className="sw-about-grid"><div><span className="sw-pill">上架有方 | Shelfwise</span><h2 id="sw-about-title">你专注好产品。<br/>上架的事，<br/><span>交给有方。</span></h2></div><div className="sw-about-copy"><span className="sw-big-star" aria-hidden="true">✳</span><h3>让出海的第一步，<br/>少一点繁琐，多一点从容。</h3><p>我们为中文跨境小卖家，把商品资料整理成面向 Amazon 美国站的美式英语文案、图片与完整上架资料包。</p><p>从市场研究到图文生成与审校，我们把上架准备串成一套流程。你可以查看每一版交付，确认适合你的最终版本。</p><a href="#packages" className="sw-text-link">找到适合你的上架方案 <span>↘</span></a></div></div><div className="sw-process" aria-label="服务流程">{["资料补全", "市场研究", "内容生成", "图文审校", "确认上架"].map((label, i) => <div key={label}><small>0{i + 1}</small><span>{label}</span><b aria-hidden="true">↗</b></div>)}</div></section>
