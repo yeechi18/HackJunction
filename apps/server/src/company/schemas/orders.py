@@ -53,6 +53,7 @@ class OrderSummary(BaseModel):
     workflow_status: str = "queued"
     pending_command_id: UUID | None
     conflicting_fact_keys: list[str]
+    ai_reply_paused: bool = False
 
 
 class SupplementInput(InputModel):

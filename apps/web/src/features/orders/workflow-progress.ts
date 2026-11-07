@@ -1,10 +1,11 @@
-type ProgressOrder = { phase: string; workflow_status: string; pending_command_id: string | null };
+type ProgressOrder = { phase: string; workflow_status: string; pending_command_id: string | null; ai_reply_paused?: boolean };
 
 export function pollIntervalFor(order: Pick<ProgressOrder, "workflow_status">): number {
   return ["queued", "running", "processing"].includes(order.workflow_status) ? 2000 : 5000;
 }
 
 export function workflowProgress(order: ProgressOrder): { title: string; description: string; tone: string } {
+  if (order.ai_reply_paused && ["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"].includes(order.phase)) return { title: "已转交人工，自动获客回复暂停", description: "负责人正在处理本单。请在人工协助中继续沟通；负责人结束人工处理后会恢复自动资料审查。", tone: "waiting" };
   const stage: Record<string, string> = {
     INTAKE: "资料审查", NEEDS_INFO: "资料审查", AWAITING_ACCEPTANCE: "资料审查",
     RESEARCH: "商品研究", GENERATION: "内容生成", REVIEW: "内容审校", NEEDS_IMAGE: "商品图片制作",

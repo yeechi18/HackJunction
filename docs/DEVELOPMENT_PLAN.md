@@ -146,7 +146,7 @@ FastAPI、Pydantic、LangGraph、数据库驱动和图片库由锁文件统一�
 
 **文件：** 后端 `services/support.py`、`api/support.py`、`api/retries.py`，必要迁移；前端 `src/features/orders/SupportPanel.tsx`、`features/operations/UsagePanel.tsx`；`tests/workflow/`、`tests/integration/`、`apps/web/e2e/`、`playwright.config.ts`；`deploy/README.md`、`docs/DEMO_RUNBOOK.md`、更新 `README.md`。部署平台确定后补进程/HTTPS配置；Dockerfile与Compose仅在选用容器部署时提供，不影响本机方案。
 
-实现人工接管/回复/归还；接管暂停自动对话，是否暂停产线由负责人明确选择。完善失败阶段、错误说明和受控重试；测试产物已提交但 checkpoint 未写入等故障点。内部页汇总模型用量、返修和负责人活跃操作时间。
+实现人工接管/回复/归还；接管暂停自动对话，是否暂停产线由负责人明确选择。完善失败阶段、错误说明和受控重试；测试产物已提交但 checkpoint 未写入等故障点。内部页汇总模型用量和返修；按用户最新要求不提供负责人活跃工时登记。
 
 在已有骨架部署上更新完整功能，使用单一 HTTPS 入口；API、worker 共享同一数据库与文件存储，配置持久卷或对象存储。部署后验数据库迁移、权限、Cookie、下载和重启恢复。公网采集真实资料前，必须通过订单隔离、内部登录及文件访问测试。
 

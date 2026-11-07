@@ -10,6 +10,7 @@
 
 - Node.js 22.x（含npm）、uv、Python 3.11（可 `uv python install 3.11`）。
 - 本机PostgreSQL 17服务，业务库和测试库分开；浏览器用于访问页面。
+- 使用新版Chrome/Edge或Safari 16.4及以上；本机原Safari 16.3低于Next.js支持范围，可能只显示页面而无法交互。建单页会提示升级，建议先用已安装的Chrome验收。
 - MiMo API Key只放根目录 `.env`；Git可用于协作，运行压缩包不依赖Git。
 
 前端代码位于 `apps/web`，后端位于 `apps/server`。不要跨电脑复制 `.venv`、`node_modules` 或数据库数据目录，应重新安装锁定依赖。
@@ -105,3 +106,5 @@ MiMo烟测会使用真实模型额度，输出4项能力结果和脱敏用量报
 另建 `hackjunction_public_demo` 数据库并安装cloudflared后，执行 `node scripts/public-demo.mjs`。脚本使用独立数据库、资产目录和生产前端，与本机开发版同时运行；HTTPS地址在 `var/public-demo/state.json`，入口密码在 `var/public-access.txt`。保持电脑及脚本运行，关闭后链接失效；负责人另用原账号登录。详细准备、停止及验收见 [部署说明](deploy/README.md)。
 
 人工完整操作见 [用户验收指南](docs/USER_TEST_GUIDE.md)，文件与代码量见 [实现清单](docs/FILE_INVENTORY.md)。公网只改变访问方式，真实MiMo与模拟Amazon的功能边界保持一致。
+
+每次提交解决的问题、修改内容、验证结果和运行影响统一记录在 [变更日志](CHANGELOG.md)。开发验收过程保留在 `docs/PROGRESS.md`，两者分别用于追踪 Git 提交与开发阶段。

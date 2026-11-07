@@ -5,7 +5,7 @@ import io
 import json
 from contextlib import AsyncExitStack
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zipfile import ZipFile
 
 import httpx
@@ -330,3 +330,120 @@ async def test_asset_upload_rejects_corrupt_and_oversized_input(asset_context):
         )
         assert response.status_code == expected, response.text
     assert (await seller.get(url)).json()["items"] == []
+
+
+@pytest.mark.integration
+async def test_reference_deletion_requires_scope_csrf_and_removes_file(asset_context):
+    settings, app, scoped_client, new_order = asset_context
+    order_id, other_id = await new_order(), await new_order()
+    seller, csrf = await scoped_client(order_id)
+    other, other_csrf = await scoped_client(other_id)
+    owner, owner_csrf = await scoped_client(owner=True)
+    url = f"/api/v1/orders/{order_id}/assets"
+    uploaded = await seller.post(
+        url,
+        files={"file": ("reference.png", image_bytes(), "image/png")},
+        headers={"X-CSRF-Token": csrf},
+    )
+    asset = uploaded.json()
+    assert (await seller.get(url)).json()["items"][0]["can_delete"] is True
+    async with app.state.database.sessions() as session:
+        record = await session.get(Asset, UUID(asset["id"]))
+        path = LocalAssetStorage(settings.asset_dir).resolve(record.storage_key)
+    assert path.is_file()
+    assert (await seller.delete(asset["url"])).status_code == 403
+    assert (
+        await other.delete(asset["url"], headers={"X-CSRF-Token": other_csrf})
+    ).status_code == 404
+    assert path.is_file()
+    assert (
+        await owner.delete(asset["url"], headers={"X-CSRF-Token": owner_csrf})
+    ).status_code == 204
+    assert not path.exists()
+    assert (await seller.get(asset["url"])).status_code == 404
+    assert (await seller.get(url)).json()["items"] == []
+
+
+@pytest.mark.integration
+async def test_used_reference_and_generated_assets_cannot_be_deleted(asset_context):
+    settings, app, scoped_client, new_order = asset_context
+    order_id = await new_order()
+    seller, csrf = await scoped_client(order_id)
+    owner, owner_csrf = await scoped_client(owner=True)
+    url = f"/api/v1/orders/{order_id}/assets"
+    uploaded = await seller.post(
+        url,
+        files={"file": ("reference.png", image_bytes(), "image/png")},
+        headers={"X-CSRF-Token": csrf},
+    )
+    reference = uploaded.json()
+    stored = LocalAssetStorage(settings.asset_dir).put_image(image_bytes())
+    generated_id = uuid4()
+    async with app.state.database.sessions() as session:
+        session.add(
+            Asset(
+                id=generated_id,
+                order_id=order_id,
+                version_id=uuid4(),
+                kind="infographic",
+                method="reference_template_v1",
+                storage_key=stored.storage_key,
+                sha256=stored.sha256,
+                media_type=stored.media_type,
+                byte_size=stored.byte_size,
+                width=stored.width,
+                height=stored.height,
+                is_demo=True,
+                delivered_at=None,
+                image_metadata={"reference_sha256": reference["sha256"]},
+            )
+        )
+        await session.commit()
+    visible = (await seller.get(url)).json()["items"][0]
+    assert visible["can_delete"] is False and "已用于图片制作" in visible["deletion_block_reason"]
+    assert (
+        await seller.delete(reference["url"], headers={"X-CSRF-Token": csrf})
+    ).status_code == 409
+    assert (
+        await owner.delete(f"{url}/{generated_id}", headers={"X-CSRF-Token": owner_csrf})
+    ).status_code == 409
+    assert (await seller.get(reference["url"])).status_code == 200
+    assert stored.path.is_file()
+
+
+@pytest.mark.integration
+async def test_reference_deletion_waits_for_pending_production(asset_context):
+    from company.persistence.models import Command, Job
+
+    _, app, scoped_client, new_order = asset_context
+    order_id = await new_order()
+    seller, csrf = await scoped_client(order_id)
+    url = f"/api/v1/orders/{order_id}/assets"
+    uploaded = await seller.post(
+        url,
+        files={"file": ("reference.png", image_bytes(), "image/png")},
+        headers={"X-CSRF-Token": csrf},
+    )
+    async with app.state.database.sessions() as session:
+        command = Command(
+            order_id=order_id,
+            kind="IMAGE_UPLOAD",
+            expected_revision=1,
+            idempotency_key="image-deletion-race",
+            request_hash="test",
+            payload={},
+        )
+        session.add(command)
+        await session.flush()
+        job = Job(order_id=order_id, command_id=command.id, kind="RESUME")
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+    assert (await seller.get(url)).json()["items"][0]["can_delete"] is False
+    target = uploaded.json()["url"]
+    assert (await seller.delete(target, headers={"X-CSRF-Token": csrf})).status_code == 409
+    async with app.state.database.sessions() as session:
+        job = await session.get(Job, job_id)
+        job.status = "done"
+        await session.commit()
+    assert (await seller.delete(target, headers={"X-CSRF-Token": csrf})).status_code == 204

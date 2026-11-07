@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from company.config import Settings
 from company.persistence.assets import Asset
+from company.persistence.models import Command, Job
 from company.providers.images import RenderedImage
 from company.providers.storage import (
     ImageLimitError,
@@ -21,7 +22,7 @@ from company.schemas.assets import AssetList, AssetView
 from company.services.orders import event, load_order
 
 
-def asset_view(asset: Asset) -> AssetView:
+def asset_view(asset: Asset, *, deletion_block_reason: str | None = None) -> AssetView:
     return AssetView(
         id=asset.id,
         order_id=asset.order_id,
@@ -37,7 +38,62 @@ def asset_view(asset: Asset) -> AssetView:
         delivered_at=asset.delivered_at,
         created_at=asset.created_at,
         url=f"/api/v1/orders/{asset.order_id}/assets/{asset.id}",
+        can_delete=asset.kind == "reference" and deletion_block_reason is None,
+        deletion_block_reason=deletion_block_reason,
     )
+
+
+async def reference_deletion_state(database: AsyncSession, order_id: UUID) -> tuple[set[str], bool]:
+    metadata = await database.scalars(
+        select(Asset.image_metadata).where(Asset.order_id == order_id, Asset.kind != "reference")
+    )
+    used_hashes = {item["reference_sha256"] for item in metadata if item.get("reference_sha256")}
+    pending_production = await database.scalar(
+        select(Job.id)
+        .join(Command, Command.id == Job.command_id)
+        .where(
+            Job.order_id == order_id,
+            Job.status.in_(["queued", "running"]),
+            Command.kind.not_in(["START", "MESSAGE", "SUPPLEMENT"]),
+        )
+        .limit(1)
+    )
+    return used_hashes, pending_production is not None
+
+
+def deletion_reason(asset: Asset, used_hashes: set[str], pending: bool) -> str | None:
+    if asset.kind != "reference":
+        return "成品图片随版本保留，不能单独删除。"
+    if asset.sha256 in used_hashes:
+        return "此参考图已用于图片制作，需保留版本依据；可上传新图用于后续版本。"
+    if pending:
+        return "生产任务正在排队或处理中，请等待处理完成后再删除参考图。"
+    return None
+
+
+async def delete_reference_asset(
+    database: AsyncSession, settings: Settings, order_id: UUID, asset_id: UUID
+) -> None:
+    # Image selection and production commits use the same order lock.
+    await load_order(database, order_id, lock=True)
+    asset = await database.scalar(
+        select(Asset).where(Asset.id == asset_id, Asset.order_id == order_id).with_for_update()
+    )
+    if asset is None:
+        raise HTTPException(404, "Asset not found.")
+    used, pending = await reference_deletion_state(database, order_id)
+    reason = deletion_reason(asset, used, pending)
+    if reason:
+        raise HTTPException(409, reason)
+    path = LocalAssetStorage(settings.asset_dir).resolve(asset.storage_key)
+    await database.delete(asset)
+    event(database, order_id, "reference_image_deleted", "未用于生产的商品参考图已删除。")
+    await database.commit()
+    try:
+        await asyncio.to_thread(path.unlink, missing_ok=True)
+    except OSError:
+        # A failed file cleanup must not replay a committed deletion; the record is inaccessible.
+        pass
 
 
 async def save_reference_asset(
@@ -94,7 +150,13 @@ async def list_assets(database: AsyncSession, order_id: UUID, *, owner: bool) ->
             )
         )
     rows = await database.scalars(query.order_by(Asset.created_at, Asset.id))
-    return AssetList(items=[asset_view(asset) for asset in rows])
+    used, pending = await reference_deletion_state(database, order_id)
+    return AssetList(
+        items=[
+            asset_view(asset, deletion_block_reason=deletion_reason(asset, used, pending))
+            for asset in rows
+        ]
+    )
 
 
 async def get_asset_path(

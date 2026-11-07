@@ -59,7 +59,7 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     await owner.getByRole("button", { name: /登录工作台/ }).click();
     await expect(owner).toHaveURL(/\/internal\/orders$/);
     await owner.goto(`/internal/orders/${order.id}`);
-    await expect(owner.getByRole("heading", { name: "研究与内容产物", exact: true })).toBeVisible();
+    await expect(owner.getByRole("heading", { name: "Agent 研究与内容产物", exact: true })).toBeVisible();
     await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
     await expect.poll(() => phase(owner, order.id), { timeout: 30000 }).toBe("AWAITING_RELEASE");
     await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
@@ -155,14 +155,12 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     }).toBe(false);
     await expect(seller.getByText("已核实：本次仅为模拟刊登，没有提交到 Amazon。", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
-    await owner.bringToFront();
-    await owner.getByRole("button", { name: "开始计时", exact: true }).click();
-    await expect(owner.getByLabel("本段实际处理时长")).not.toHaveText("00:00:00");
-    await owner.getByRole("button", { name: "暂停计时", exact: true }).click();
-    await owner.getByRole("button", { name: "保存本段实际工时", exact: true }).click();
-    await expect(owner.getByText("本段实际处理工时已保存。", { exact: true })).toBeVisible();
-    const measured = await owner.request.get(`/api/v1/internal/orders/${order.id}/metrics`);
-    expect((await measured.json()).owner_active_seconds).toBeGreaterThan(0);
+    await expect(owner.getByRole("heading", { name: "记录本段人工处理时间", exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "开始计时", exact: true })).toHaveCount(0);
+    await expect(owner.getByText("已保存活跃工时", { exact: true })).toHaveCount(0);
+    await expect(owner.getByText("补录竞品或商品观察", { exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "启动内容生产", exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("heading", { name: "模型用量与任务恢复", exact: true })).toBeVisible();
     await screenshot(owner, "owner-closed-loop-desktop.png");
     await owner.setViewportSize({ width: 390, height: 844 });
     expect(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

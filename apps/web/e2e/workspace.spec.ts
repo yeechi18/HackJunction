@@ -53,6 +53,16 @@ test("虚构订单支持不完整建单、私有会话恢复、消息与资料�
   await page.getByLabel("给这份订单留个消息").fill(message);
   await page.getByRole("button", { name: /发送消息/ }).click();
   await expect(page.getByText(message, { exact: true })).toBeVisible();
+  // Let the queued intake finish before opening a revision-bound editing form.
+  let revision = 0;
+  await expect.poll(async () => {
+    const response = await page.request.get(`/api/v1/orders/${privateUrl.pathname.split("/").pop()}`);
+    const order = await response.json();
+    revision = order.revision;
+    return order.workflow_status;
+  }).toBe("waiting_for_seller");
+  await page.locator(".workspace-toolbar").getByRole("button", { name: /刷新/ }).click();
+  await expect(page.locator(".order-identity")).toContainText(`资料版本 ${revision}`);
   await page.getByRole("button", { name: /补充商品资料/ }).click();
   const dimensions = page.getByLabel(/^尺寸/);
   await dimensions.fill("4 × 3 × 2");

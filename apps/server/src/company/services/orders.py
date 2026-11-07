@@ -79,6 +79,8 @@ def conflicts(facts: list[dict]) -> list[str]:
 
 
 async def summary(database: AsyncSession, order: Order, *, internal: bool = False) -> OrderSummary:
+    from company.services.support import ai_reply_paused
+
     snapshot = await latest_snapshot(database, order.id)
     active_job = await database.scalar(
         select(Job)
@@ -163,6 +165,7 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         conflicting_fact_keys=conflicts(snapshot.facts),
         workflow_status=workflow_status,
         allowed_actions=actions,
+        ai_reply_paused=await ai_reply_paused(database, order.id),
     )
 
 

@@ -19,6 +19,8 @@ class AssetView(BaseModel):
     delivered_at: datetime | None
     created_at: datetime
     url: str
+    can_delete: bool = False
+    deletion_block_reason: str | None = None
 
 
 class AssetList(BaseModel):

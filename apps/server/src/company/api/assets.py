@@ -114,6 +114,14 @@ async def list_order_assets(order_id: UUID, request: Request, database: DB):
     return await assets.list_assets(database, order_id, owner=role == "owner")
 
 
+@router.delete("/{order_id}/assets/{asset_id}", status_code=204)
+async def delete_reference(
+    order_id: UUID, asset_id: UUID, request: Request, database: DB, settings: Configuration
+) -> None:
+    await _write_access(request, database, settings, order_id)
+    await assets.delete_reference_asset(database, settings, order_id, asset_id)
+
+
 @router.get("/{order_id}/assets/{asset_id}")
 async def download(
     order_id: UUID, asset_id: UUID, request: Request, database: DB, settings: Configuration

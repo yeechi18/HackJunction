@@ -77,6 +77,7 @@ async def test_support_scope_csrf_reuse_human_reply_and_return_to_intake(context
     assert (await other.get(path)).status_code == 404
     assert (await customer.get("/api/v1/internal/support-tickets")).status_code == 401
     assert (await customer.get(path)).json()["ai_reply_paused"] is True
+    assert (await customer.get(f"/api/v1/orders/{order['id']}")).json()["ai_reply_paused"] is True
     async with app.state.database.sessions() as session, session.begin():
         assert await ai_reply_paused(session, UUID(order["id"]))
         record = await session.get(Order, UUID(order["id"]))
@@ -93,6 +94,7 @@ async def test_support_scope_csrf_reuse_human_reply_and_return_to_intake(context
     answer_headers = {"X-CSRF-Token": owner_csrf, "Idempotency-Key": "close-case"}
     closed = await owner.post(reply_path, json=answer, headers=answer_headers)
     assert closed.status_code == 200, closed.text
+    assert (await customer.get(f"/api/v1/orders/{order['id']}")).json()["ai_reply_paused"] is False
     assert (
         closed.json()["status"] == "resolved" and closed.json()["messages"][-1]["role"] == "human"
     )

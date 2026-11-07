@@ -16,14 +16,8 @@
 .metadata { display:flex; gap:12px; flex-wrap:wrap; font-size:9px; }
 .evidenceList a { display:inline-block; font-size:10px; color:#7d9661; margin-top:12px; }
 .evidenceList code { display:block; font-size:8px; color:#a8b498; overflow-wrap:anywhere; margin-top:8px; }
-.evidenceForm { border:1px dashed #d0dcc1; background:#f6f9ef; margin-top:20px; }
-.evidenceForm>summary,.disclosure>summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:11px; line-height:1.8; color:#829869; padding:15px; }
-.evidenceForm summary::-webkit-details-marker,.disclosure summary::-webkit-details-marker { display:none; }
-.evidenceForm form { padding:6px 17px 20px; }
-.evidenceForm .note { margin:10px 0 18px; font-size:9px; }
-.startProduction { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:23px 0; padding:18px; border:1px solid #dde6d0; background:#f1f6e8; }
-.startProduction p { font-size:10px; line-height:1.8; color:#84966c; }
-.startProduction button { flex-shrink:0; }
+.disclosure>summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:11px; line-height:1.8; color:#829869; padding:15px; }
+.disclosure summary::-webkit-details-marker { display:none; }
 .researchCard { border:1px solid #e1e8d8; padding:18px; margin-bottom:17px; }
 .subheading { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
 .subheading h3,.subheading strong { font-size:12px; line-height:1.6; color:#73875e; font-weight:500; }
@@ -77,4 +71,4 @@
 .versionImages a { display:block; min-width:0; border:1px solid #e1e8d5; padding:7px; }
 .versionImages img { display:block; width:100%; height:auto; object-fit:contain; background:#f4f7ee; }
 .versionImages span { display:block; font-size:8px; color:#a6b293; margin-top:7px; line-height:1.8; }
-@media(max-width:600px) { .versionSelectors { gap:12px; } .comparing { grid-template-columns:1fr; } .researchCard,.versionColumns>article,.reviewCard { padding:14px; } .pricing>strong { font-size:16px; } .startProduction { flex-direction:column; align-items:flex-start; } .subheading { flex-wrap:wrap; gap:8px; } .versionState { gap:9px; padding:12px; } .draftField h4 { font-size:16px; } .metadata { gap:8px; } .evidenceForm form { padding:5px 13px 17px; } }
+@media(max-width:600px) { .versionSelectors { gap:12px; } .comparing { grid-template-columns:1fr; } .researchCard,.versionColumns>article,.reviewCard { padding:14px; } .pricing>strong { font-size:16px; }  .subheading { flex-wrap:wrap; gap:8px; } .versionState { gap:9px; padding:12px; } .draftField h4 { font-size:16px; } .metadata { gap:8px; }  }

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
 import { formatTime, type InternalOrder, type DecisionCommand } from "@/features/orders/types";
 import { pollIntervalFor } from "@/features/orders/workflow-progress";
@@ -25,53 +25,8 @@ function strings(value: unknown): string[] { return Array.isArray(value) ? value
 function records(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value.filter(item => item !== null && typeof item === "object" && !Array.isArray(item)).map(record) : []; }
 function priceText(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }
 
-function EvidenceForm({ order, csrfToken, saved }: { order: InternalOrder; csrfToken: string; saved: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) return;
-    const fields = new FormData(event.currentTarget);
-    const price = String(fields.get("price") ?? "").trim();
-    const sourceUrl = String(fields.get("source_url") ?? "").trim();
-    const observed = String(fields.get("observed_at") ?? "").trim();
-    if (price && (!/^\d+(?:\.\d+)?$/.test(price) || Number(price) <= 0)) { setError("观察价格需为大于零的十进制金额。"); return; }
-    if (sourceUrl && !/^https?:\/\//i.test(sourceUrl)) { setError("来源链接请使用 http 或 https 地址。"); return; }
-    setBusy(true); setError(""); setNotice("");
-    try {
-      await apiFetch<Evidence>(`/internal/orders/${order.id}/evidence`, {
-        method: "POST", headers: csrfHeaders(csrfToken), body: JSON.stringify({
-          source: String(fields.get("source") ?? "").trim(), content: String(fields.get("content") ?? "").trim(),
-          kind: "manual_observation", provider: "manual", status: String(fields.get("status")),
-          source_url: sourceUrl || null, scope: String(fields.get("scope") ?? "").trim(),
-          is_demo: fields.get("is_demo") === "on", data: price ? { price, currency: "USD" } : {},
-          ...(observed ? { observed_at: new Date(observed).toISOString() } : {}),
-        }),
-      });
-      setNotice("人工观察已保存。新观察不会改写既有研究快照，后续生产会按命令读取证据。");
-      formRef.current?.reset(); saved();
-    } catch (caught) { setError(errorMessage(caught)); }
-    finally { setBusy(false); }
-  }
-
-  return <details className={styles.evidenceForm}><summary>补录竞品或商品观察 <span aria-hidden="true">＋</span></summary><form onSubmit={submit} ref={formRef}>
-    <div className="field"><label htmlFor="evidence-source">观察来源 <em>必填</em></label><input id="evidence-source" name="source" required maxLength={500} placeholder="填写实际观察来源或记录名称" disabled={busy} /></div>
-    <div className="field"><label htmlFor="evidence-content">观察内容 <em>必填</em></label><textarea id="evidence-content" name="content" required rows={4} maxLength={20000} placeholder="记录你实际看到的规格、价格或其他信息，不把竞品属性当作本商品事实。" disabled={busy} /></div>
-    <div className="form-two-columns"><div className="field"><label htmlFor="evidence-url">来源链接</label><input id="evidence-url" name="source_url" type="url" maxLength={2000} placeholder="https://…" disabled={busy} /></div><div className="field"><label htmlFor="evidence-price">观察价格（USD）</label><input id="evidence-price" name="price" inputMode="decimal" placeholder="有依据时填写，如 9.99" disabled={busy} /></div></div>
-    <div className="form-two-columns"><div className="field"><label htmlFor="evidence-status">观察完整性</label><select id="evidence-status" name="status" defaultValue="success" disabled={busy}><option value="success">观察成功</option><option value="partial">仅部分信息</option><option value="failed">观察失败</option></select></div><div className="field"><label htmlFor="evidence-time">观察时间（本地时间）</label><input id="evidence-time" name="observed_at" type="datetime-local" disabled={busy} /></div></div>
-    <div className="field"><label htmlFor="evidence-scope">适用范围</label><input id="evidence-scope" name="scope" required maxLength={1000} defaultValue="Amazon US / 本 SKU" disabled={busy} /></div>
-    <label className="checkbox-field"><input type="checkbox" name="is_demo" defaultChecked={order.is_demo} disabled={busy || !order.is_demo} /><span>这条观察属于虚构演示资料</span></label>
-    <p className={styles.note}>录入方式：人工。来源链接仅用于复核，不会自动抓取；未填观察时间时记录提交时间。</p>
-    {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.success} role="status">{notice}</p>}
-    <button className="button button-dark button-small" disabled={busy} type="submit">{busy ? "保存中…" : "保存观察"}<span aria-hidden="true">↗</span></button>
-  </form></details>;
-}
-
 function EvidenceList({ items }: { items: Evidence[] }) {
-  return <div className={styles.evidenceList}>{items.length ? items.map(item => <details key={item.id}><summary><strong>{item.source}</strong><span>{item.is_demo && <i className="demo-tag">演示</i>}{({ success: "成功", partial: "部分信息", failed: "失败" } as Record<string, string>)[item.status] ?? item.status}</span></summary><p>{item.content}</p><div className={styles.metadata}><span>{formatTime(item.observed_at)}</span><span>{item.scope}</span>{item.data.price != null && <span>观察价 {priceText(item.data.price)} {text(item.data.currency)}</span>}</div>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">复核来源 ↗</a>}<code>{item.id}</code></details>) : <p className={styles.empty}>还没有人工观察。缺少可用价格证据时，定价建议会保持为空。</p>}</div>;
+  return <div className={styles.evidenceList}>{items.length ? items.map(item => <details key={item.id}><summary><strong>{item.source}</strong><span>{item.is_demo && <i className="demo-tag">演示</i>}{({ success: "成功", partial: "部分信息", failed: "失败" } as Record<string, string>)[item.status] ?? item.status}</span></summary><p>{item.content}</p><div className={styles.metadata}><span>{formatTime(item.observed_at)}</span><span>{item.scope}</span>{item.data.price != null && <span>观察价 {priceText(item.data.price)} {text(item.data.currency)}</span>}</div>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">复核来源 ↗</a>}<code>{item.id}</code></details>) : <p className={styles.empty}>尚无外部竞品证据。研究 Agent 会分析已确认商品资料，价格依据不足时不提供定价建议。</p>}</div>;
 }
 
 function ResearchCard({ research }: { research: Research }) {
@@ -144,9 +99,6 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  const pending = useRef<{ body: string; key: string } | null>(null);
   const delay = pollIntervalFor(order);
   const latestVersion = production?.versions.reduce<Version | null>((latest, item) => !latest || item.version_number > latest.version_number ? item : latest, null);
   const viewedVersion = production?.versions.find(item => item.id === selectedVersion) ?? latestVersion;
@@ -170,21 +122,8 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
     return () => { active = false; controller.abort(); if (timer) clearTimeout(timer); };
   }, [order.id, delay, revision]);
 
-  async function start() {
-    if (busy || !order.allowed_actions.includes("produce")) return;
-    const body = JSON.stringify({ expected_revision: order.revision });
-    if (pending.current?.body !== body) pending.current = { body, key: crypto.randomUUID() };
-    setBusy(true); setError(""); setNotice("");
-    try {
-      const result = await apiFetch<DecisionCommand>(`/internal/orders/${order.id}/production/start`, { method: "POST", body, headers: csrfHeaders(csrfToken), idempotencyKey: pending.current.key });
-      setNotice(`生产命令 ${result.command_id.slice(0, 8)} 已入队，等待实际执行结果。`); refresh();
-    } catch (caught) { setError(errorMessage(caught)); if (caught instanceof ApiError && caught.status === 409) refresh(); }
-    finally { setBusy(false); }
-  }
-
-  return <section className={`surface workspace-panel ${styles.panel}`} aria-labelledby="production-title"><div className="panel-heading"><h2 id="production-title">研究与内容产物</h2><button className="text-button" type="button" onClick={() => setRevision(value => value + 1)}>刷新 ↻</button></div>{error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.success} role="status">{notice}</p>}
-    <div className={styles.sectionHeading}><h3>人工证据与竞品观察</h3><span>{evidence.length} 条</span></div><EvidenceList items={evidence} /><EvidenceForm order={order} csrfToken={csrfToken} saved={() => { setRevision(value => value + 1); refresh(); }} />
-    {order.allowed_actions.includes("produce") && <div className={styles.startProduction}><p>核对资料、竞品依据与参考图后，发起研究、生成和审校。</p><button className="button button-dark button-small" type="button" disabled={busy} onClick={start}>{busy ? "提交中…" : "启动内容生产"}<span aria-hidden="true">↗</span></button></div>}
+  return <section className={`surface workspace-panel ${styles.panel}`} aria-labelledby="production-title"><div className="panel-heading"><h2 id="production-title">Agent 研究与内容产物</h2><button className="text-button" type="button" onClick={() => setRevision(value => value + 1)}>刷新 ↻</button></div>{error && <p className={styles.error} role="alert">{error}</p>}
+    <p className={styles.note}>研究、生成和审校由对应 Agent 自动完成。此处查看产物与依据；负责人可以放行或否决，修改由 Agent 执行。</p><details className={styles.disclosure}><summary>研究依据（只读） <span>{evidence.length} 条 ＋</span></summary><EvidenceList items={evidence} /></details>
     <div className={styles.sectionHeading}><h3>研究包</h3><span>{production?.research.length ?? 0} 份</span></div>{production?.research.length ? production.research.map(item => <ResearchCard research={item} key={item.id} />) : <p className={styles.empty}>暂无研究结果。</p>}
     <div className={styles.sectionHeading}><h3>版本、声明与审校</h3><span>{production?.versions.length ?? 0} 个版本</span></div>{production ? <VersionPanel production={production} selected={selectedVersion} onSelect={setSelectedVersion} assets={assets} /> : <p className={styles.empty}>正在读取内部产物…</p>}
     {latestVersion && viewedVersion && <ReleaseGate order={order} version={viewedVersion} latest={latestVersion} showLatest={() => setSelectedVersion("")} csrfToken={csrfToken} refresh={() => { setRevision(value => value + 1); refresh(); }} />}

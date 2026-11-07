@@ -952,6 +952,50 @@
       }
     },
     "/api/v1/orders/{order_id}/assets/{asset_id}": {
+      "delete": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "Delete Reference",
+        "operationId": "delete_reference_api_v1_orders__order_id__assets__asset_id__delete",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "tags": [
           "assets"
@@ -2049,6 +2093,22 @@
           "url": {
             "type": "string",
             "title": "Url"
+          },
+          "can_delete": {
+            "type": "boolean",
+            "title": "Can Delete",
+            "default": false
+          },
+          "deletion_block_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Block Reason"
           }
         },
         "type": "object",
@@ -3097,6 +3157,11 @@
             "type": "array",
             "title": "Conflicting Fact Keys"
           },
+          "ai_reply_paused": {
+            "type": "boolean",
+            "title": "Ai Reply Paused",
+            "default": false
+          },
           "contact": {
             "anyOf": [
               {
@@ -3521,6 +3586,11 @@
             },
             "type": "array",
             "title": "Conflicting Fact Keys"
+          },
+          "ai_reply_paused": {
+            "type": "boolean",
+            "title": "Ai Reply Paused",
+            "default": false
           }
         },
         "type": "object",

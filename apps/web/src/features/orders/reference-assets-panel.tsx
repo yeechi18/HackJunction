@@ -4,39 +4,17 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
 import styles from "./reference-assets-panel.module.css";
+import { formatBytes, uploadErrorMessage, validateFile } from "./reference-image";
 
 import type { components } from "@/lib/generated/api";
 type AssetView = components["schemas"]["AssetView"];
 
 type Props = { orderId: string; csrfToken: string; internal?: boolean };
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const kindLabels: Record<string, string> = {
   reference: "商品参考图",
   main_candidate: "主图候选",
   infographic: "商品信息附图",
 };
-
-function formatBytes(bytes: number): string {
-  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MiB` : `${Math.max(1, Math.ceil(bytes / 1024))} KiB`;
-}
-
-function validateFile(file: File): string | null {
-  if (!file.size) return "这张图片是空文件，请重新选择。";
-  if (file.size > MAX_IMAGE_BYTES) return "单张图片不能超过 10 MiB，请缩小图片后再上传。";
-  const knownType = IMAGE_TYPES.has(file.type);
-  const unknownTypeWithImageExtension = !file.type && /\.(png|jpe?g|webp)$/i.test(file.name);
-  return knownType || unknownTypeWithImageExtension ? null : "请选择 PNG、JPEG 或 WebP 格式的图片。";
-}
-
-function uploadErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 413) return "上传图片超过大小限制，请选择不超过 10 MiB 的图片。";
-    if (error.status === 415) return "图片格式不支持，请选择 PNG、JPEG 或 WebP 图片。";
-    if (error.status === 422) return "图片未通过校验，请检查图片是否完整，并重新选择后上传。";
-  }
-  return errorMessage(error);
-}
 
 function sourceLabel(asset: AssetView): string {
   if (asset.method === "upload_normalized_png") return "来源：上传的商品参考图";
@@ -44,7 +22,8 @@ function sourceLabel(asset: AssetView): string {
   return asset.kind === "reference" ? "来源：商品参考素材" : "来源：商品图片制作";
 }
 
-function AssetCard({ asset, internal }: { asset: AssetView; internal: boolean }) {
+function AssetCard({ asset, internal, busy, onDelete }: { asset: AssetView; internal: boolean; busy: boolean; onDelete: (asset: AssetView) => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
   const label = kindLabels[asset.kind] ?? "商品图片";
@@ -61,6 +40,11 @@ function AssetCard({ asset, internal }: { asset: AssetView; internal: boolean })
       <p className={styles.dimensions}>{asset.width} × {asset.height} px <span>·</span> {formatBytes(asset.byte_size)}</p>
       <p className={styles.source}>{sourceLabel(asset)}</p>
       <div className={styles.assetFooter}><span>{asset.media_type.replace("image/", "").toUpperCase()}{internal && asset.version_id ? ` · 版本 ${asset.version_id.slice(0, 8)}` : ""}</span><a href={asset.url} target="_blank" rel="noreferrer">查看图片 ↗</a></div>
+      {asset.kind === "reference" && <div className={styles.deleteActions}>
+        {confirming ? <><p>确认删除这张参考图？删除后可重新上传。</p><button type="button" disabled={busy} onClick={() => void onDelete(asset)}>确认删除</button><button type="button" disabled={busy} onClick={() => setConfirming(false)}>取消</button></>
+          : <button type="button" disabled={busy || !asset.can_delete} onClick={() => setConfirming(true)}>删除参考图</button>}
+        {!asset.can_delete && asset.deletion_block_reason && <p>{asset.deletion_block_reason}</p>}
+      </div>}
     </div>
   </article>;
 }
@@ -130,6 +114,18 @@ function AssetsWorkspace({ orderId, csrfToken, internal = false }: Props) {
     finally { setBusy(false); }
   }
 
+  async function removeReference(asset: AssetView) {
+    if (busy || !asset.can_delete) return;
+    setBusy(true); setUploadError(""); setUploadNotice("");
+    try {
+      await apiFetch(`${assetPath}/${encodeURIComponent(asset.id)}`, { method: "DELETE", headers: csrfHeaders(csrfToken) });
+      setAssets(current => current?.filter(item => item.id !== asset.id) ?? null);
+      setUploadNotice("参考图已删除。");
+    } catch (caught) {
+      setUploadError(caught instanceof ApiError && caught.status === 409 ? "此图正在用于生产或已成为版本依据，暂不能删除。请刷新查看。" : errorMessage(caught));
+    } finally { setBusy(false); setRevision(current => current + 1); }
+  }
+
   return <section className={`surface workspace-panel ${styles.panel}`} aria-labelledby={`${panelId}-title`}>
     <div className="panel-heading"><h2 id={`${panelId}-title`}>{internal ? "商品图片与参考素材" : "商品参考图"}</h2><span>{assets ? `${assets.length} 张可见图片` : "实际图片文件"}</span></div>
     <p className={styles.intro}>上传能够准确呈现商品的现有图片，作为后续图片制作的参考。</p>
@@ -144,7 +140,7 @@ function AssetsWorkspace({ orderId, csrfToken, internal = false }: Props) {
     </form>
     <div className={styles.listHeading}><span>{internal ? "本单已保存素材" : "本单可见图片"}</span><button className="text-button" type="button" onClick={() => setRevision(current => current + 1)}>刷新 ↻</button></div>
     {loadError && <p className={styles.error} role="alert">{loadError}{assets ? " 当前仍显示最近一次成功读取的图片。" : ""}</p>}
-    {!assets && !loadError ? <p className={styles.empty} role="status">正在读取图片…</p> : assets?.length ? <div className={styles.assetGrid}>{assets.map(asset => <AssetCard key={asset.id} asset={asset} internal={internal} />)}</div> : !loadError && <p className={styles.empty}>还没有可见图片，先上传一张商品参考图。</p>}
+    {!assets && !loadError ? <p className={styles.empty} role="status">正在读取图片…</p> : assets?.length ? <div className={styles.assetGrid}>{assets.map(asset => <AssetCard key={asset.id} asset={asset} internal={internal} busy={busy} onDelete={removeReference} />)}</div> : !loadError && <p className={styles.empty}>还没有可见图片，先上传一张商品参考图。</p>}
   </section>;
 }
 
