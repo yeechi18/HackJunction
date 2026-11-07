@@ -1,0 +1,103 @@
+name: Check native platforms and PostgreSQL
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: test
+  MIMO_MODE: fake
+  MIMO_API_KEY: ""
+  PUBLISH_MODE: simulated
+  PYTHONUTF8: "1"
+
+jobs:
+  native-offline:
+    name: Offline checks (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      # Versions verified against the official action repositories.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.28"
+          enable-cache: true
+          cache-dependency-glob: |
+            apps/server/uv.lock
+            apps/server/pyproject.toml
+      - name: Install locked Python dependencies
+        run: uv sync --project apps/server --locked --group dev --python 3.11
+      - name: Offline Python rules and fixtures (integration tests opt out)
+        run: uv run --project apps/server pytest apps/server/tests -q
+      - name: Python lint
+        run: uv run --project apps/server ruff check apps/server/src apps/server/tests apps/server/alembic
+      - name: Install locked web dependencies
+        run: npm --prefix apps/web ci
+      - name: Web lint
+        run: npm --prefix apps/web run lint
+      - name: Web production build and generated Next types
+        run: npm --prefix apps/web run build
+      - name: Web TypeScript
+        run: npm --prefix apps/web run typecheck
+
+  postgres-integration:
+    name: PostgreSQL 17 integration (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hackjunction
+          POSTGRES_PASSWORD: ci-local-only
+          POSTGRES_DB: hackjunction
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackjunction -d hackjunction"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql+psycopg://hackjunction:ci-local-only@127.0.0.1:5432/hackjunction
+      TEST_DATABASE_URL: postgresql+psycopg://hackjunction:ci-local-only@127.0.0.1:5432/hackjunction_test
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: hackjunction
+      PGPASSWORD: ci-local-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.28"
+          enable-cache: true
+          cache-dependency-glob: |
+            apps/server/uv.lock
+            apps/server/pyproject.toml
+      - name: Install locked Python dependencies
+        run: uv sync --project apps/server --locked --group dev --python 3.11
+      - name: Create an independent test database
+        run: >-
+          uv run --project apps/server python -c
+          "import psycopg; connection=psycopg.connect('dbname=postgres', autocommit=True);
+          connection.execute('CREATE DATABASE hackjunction_test'); connection.close()"
+      - name: PostgreSQL migrations, workflow and permission acceptance
+        run: uv run --project apps/server pytest apps/server/tests -q --run-db-tests

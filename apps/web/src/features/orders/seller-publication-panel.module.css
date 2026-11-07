@@ -1,0 +1,35 @@
+.panel { min-width: 0; }
+.mode { font-size: 11px; line-height: 1.9; color: #a88c56; padding: 12px 14px; border: 1px solid #e9dfc2; background: #fbf7eb; border-radius: 3px; }
+.hint { color: #879c73; font-size: 11px; line-height: 1.9; margin-top: 12px; }
+.status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 9px 18px; margin-top: 20px; padding-bottom: 14px; border-bottom: 1px solid #e2ead8; }
+.status span { color: #9bae87; font-size: 10px; }
+.status strong { color: #718d54; font-size: 13px; font-weight: 500; }
+.version { margin-top: 20px; padding: 16px; background: #f4f7ec; border: 1px solid #dfe8d3; border-radius: 3px; }
+.version strong { color: #708951; font-size: 12px; font-weight: 500; }
+.version>span { display: block; color: #9aaa87; font-size: 10px; line-height: 1.9; margin-top: 5px; }
+.version p { color: #7b9362; font-size: 12px; line-height: 1.9; margin-top: 8px; overflow-wrap: anywhere; }
+.form { display: grid; gap: 12px; padding-top: 23px; margin-top: 23px; border-top: 1px solid #dfe8d3; }
+.form h3 { color: #708b54; font-size: 13px; line-height: 1.8; font-weight: 500; }
+.form>.hint { margin-top: 0; }
+.form>label,.priceFields label { color: #718951; font-size: 12px; line-height: 1.8; }
+.form>input,.form>textarea,.priceFields input { width: 100%; min-width: 0; border: 1px solid #d5e0c7; border-radius: 3px; padding: 11px 13px; color: #647c4e; background: #fffefa; font: inherit; font-size: 12px; line-height: 1.8; }
+.form textarea { resize: vertical; min-height: 90px; }
+.form :is(input,textarea):focus-visible { outline: 2px solid #cd946c; outline-offset: 2px; }
+.form>button { justify-self: start; }
+.form :is(input,textarea,button):disabled { opacity: .58; cursor: not-allowed; }
+.checkbox { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.checkbox input { margin-top: 6px; accent-color: #739052; flex-shrink: 0; }
+.checkbox span { line-height: 1.9; overflow-wrap: anywhere; }
+.checkbox strong { font-weight: 500; color: #708c52; }
+.priceFields { display: grid; grid-template-columns: 2fr 1fr; gap: 13px; }
+.priceFields label { display: block; margin-bottom: 8px; }
+.priceFields input[readonly] { color: #99a989; background: #f6f8f0; }
+.facts { border: 1px solid #e1e9d6; background: #fbfcf6; border-radius: 3px; padding: 16px; }
+.facts>.hint { margin: 0 0 16px; }
+.error,.warning,.notice { padding: 11px 13px; border-left: 2px solid; font-size: 11px; line-height: 1.9; overflow-wrap: anywhere; }
+.error,.warning { color: #a47c51; border-color: #cfac80; background: #faf1e6; }
+.notice { color: #739057; border-color: #a6bd88; background: #eef4e4; margin-top: 16px; }
+.warning { margin-top: 12px; }
+.warning button { display: block; margin-top: 8px; }
+.demoLink { margin-top: 17px; }
+@media(max-width: 600px) { .priceFields { gap: 10px; } .facts { padding: 13px 10px; } .form>label,.priceFields label { font-size: 11px; } }

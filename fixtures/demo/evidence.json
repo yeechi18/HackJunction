@@ -1,0 +1,8 @@
+{
+  "is_demo": true,
+  "observations": [
+    {"id": "demo-competitor-1", "source_kind": "fictional_manual_observation", "source_url": "https://example.com/fictional-competitor-a", "pack_quantity": 6, "price": "9.99", "currency": "USD"},
+    {"id": "demo-competitor-2", "source_kind": "fictional_manual_observation", "source_url": "https://example.com/fictional-competitor-b", "pack_quantity": 8, "price": "12.99", "currency": "USD"}
+  ],
+  "note": "All prices and observations are invented demo data. Not live market research or pricing advice."
+}

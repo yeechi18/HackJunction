@@ -1,0 +1,73 @@
+.panel { min-width:0; }
+.intro { color:#7a8b68; font-size:11px; line-height:1.9; margin-bottom:18px; }
+.uploadForm { padding:18px; border:1px dashed #d1ddc1; border-radius:3px; background:#f5f8ef; }
+.fileLabel { display:block; color:#657d4d; font-size:12px; font-weight:500; line-height:1.7; margin-bottom:11px; }
+.fileInput { display:block; width:100%; min-width:0; color:#869878; font-size:11px; line-height:1.7; }
+.fileInput::file-selector-button { color:#607849; background:#fffefa; border:1px solid #d3dfc4; border-radius:3px; margin-right:12px; padding:9px 12px; font:inherit; cursor:pointer; }
+.fileInput:disabled::file-selector-button { opacity:.6; cursor:wait; }
+.fileInput:focus-visible { outline:2px solid #e76b35; outline-offset:5px; }
+.limits { color:#91a27e; font-size:9px; line-height:1.9; margin-top:12px; }
+.selectedFile { display:flex; flex-wrap:wrap; gap:8px 15px; align-items:center; padding-top:13px; margin-top:13px; border-top:1px solid #e2ead7; }
+.selectedFile strong { color:#7c9366; font-size:10px; font-weight:500; line-height:1.8; overflow-wrap:anywhere; }
+.selectedFile span { color:#a3b18f; font-size:9px; white-space:nowrap; }
+.uploadActions { display:flex; align-items:center; gap:18px; margin-top:17px; }
+.uploadActions>button:first-child { font-size:11px; }
+.error { border-left:2px solid #cf9e75; color:#a77a53; background:#fcf0e6; padding:11px 13px; margin-top:16px; font-size:10px; line-height:1.9; overflow-wrap:anywhere; }
+.notice { border-left:2px solid #9eb77f; color:#708951; background:#edf4e2; padding:11px 13px; margin-top:16px; font-size:10px; line-height:1.9; }
+.listHeading { display:flex; align-items:center; justify-content:space-between; gap:18px; border-top:1px solid #e3ebd7; padding-top:21px; margin-top:25px; margin-bottom:18px; }
+.listHeading>span { color:#8da077; font-size:10px; line-height:1.7; }
+.empty { font-size:11px; line-height:1.9; color:#9dae8a; padding:7px 0 2px; }
+.assetGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px; }
+.assetCard { min-width:0; border:1px solid #e0e9d4; border-radius:3px; overflow:hidden; background:#fffefa; }
+.preview { aspect-ratio:1.15; min-width:0; position:relative; background:#f0f4e8; isolation:isolate; }
+.preview img { object-fit:contain; padding:13px; }
+.demoBadge { position:absolute; left:11px; top:10px; z-index:1; background:rgba(252,247,232,.95); border:1px solid #e0d5b2; padding:3px 6px; color:#ac9765; font-size:8px; line-height:1.6; border-radius:2px; }
+.imageFailure { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:20px; text-align:center; }
+.imageFailure>span { font-size:24px; color:#a9bb92; }
+.imageFailure p { font-size:10px; color:#90a17c; line-height:1.8; }
+.imageFailure button { border:1px solid #d4e0c3; background:#fbfdf7; padding:6px 10px; border-radius:2px; color:#8a9f72; font-size:9px; line-height:1.6; }
+.assetBody { padding:15px; border-top:1px solid #e2ead8; }
+.assetHeading { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.assetHeading h3 { font-size:12px; font-weight:500; color:#728d56; line-height:1.6; }
+.deliveryState { flex-shrink:0; font-size:7px; line-height:1.6; padding:2px 5px; color:#a49a6d; border:1px solid #e4dec5; background:#faf7ec; border-radius:2px; }
+.dimensions { color:#90a279; font-size:9px; line-height:1.8; margin-top:8px; }
+.dimensions>span { color:#c0cbb2; margin:0 5px; }
+.source { color:#a0b18a; font-size:8px; line-height:1.8; margin-top:5px; }
+.assetFooter { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:12px; margin-top:12px; border-top:1px solid #edf1e6; }
+.assetFooter>span { color:#b0bea0; font-size:7px; line-height:1.7; overflow-wrap:anywhere; }
+.assetFooter>a { flex-shrink:0; color:#7e9b60; font-size:9px; line-height:1.8; }
+.assetFooter>a:hover { color:#cc7949; }
+@media(max-width:1000px) {
+  .assetGrid { gap:13px; }
+  .assetBody { padding:12px; }
+  .assetHeading h3 { font-size:11px; }
+  .dimensions { font-size:8px; }
+  .source { font-size:8px; }
+  .assetFooter { flex-wrap:wrap; gap:6px 10px; }
+}
+@media(max-width:500px) {
+  .intro { font-size:10px; margin-bottom:16px; }
+  .uploadForm { padding:15px 13px; }
+  .fileLabel { font-size:11px; }
+  .fileInput { font-size:10px; }
+  .fileInput::file-selector-button { margin-right:9px; padding:8px 9px; }
+  .limits { font-size:8px; }
+  .uploadActions { gap:16px; }
+  .uploadActions>button:first-child { font-size:10px; }
+  .selectedFile { gap:5px 10px; }
+  .selectedFile strong { font-size:9px; }
+  .selectedFile span { font-size:8px; }
+  .error,.notice { font-size:9px; padding:10px 11px; }
+  .assetGrid { grid-template-columns:1fr; gap:16px; }
+  .preview { aspect-ratio:1.35; }
+  .preview img { padding:15px; }
+  .assetBody { padding:14px; }
+  .assetHeading h3 { font-size:12px; }
+  .dimensions { font-size:9px; }
+  .source { font-size:9px; }
+  .assetFooter { flex-wrap:nowrap; }
+  .assetFooter>span { font-size:8px; }
+  .assetFooter>a { font-size:10px; }
+  .deliveryState { font-size:8px; }
+  .demoBadge { font-size:8px; }
+}

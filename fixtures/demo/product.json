@@ -1,0 +1,14 @@
+{
+  "is_demo": true,
+  "product_id": "demo-cable-clip",
+  "name_zh": "桌面理线夹",
+  "marketplace": "AMAZON_US",
+  "language": "en-US",
+  "facts": [
+    {"id": "fact-material", "key": "material", "value": "silicone", "confirmed": true, "source": "fictional_seller"},
+    {"id": "fact-count", "key": "pack_quantity", "value": 6, "confirmed": true, "source": "fictional_seller"},
+    {"id": "fact-color", "key": "color", "value": "black", "confirmed": true, "source": "fictional_seller"}
+  ],
+  "missing_fields_for_intake_demo": ["dimensions"],
+  "note": "Fictional test fixture. Not a real seller, product, certification, or transaction."
+}
