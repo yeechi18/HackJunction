@@ -61,7 +61,14 @@ async def test_completed_length_and_invalid_json_retain_safe_metadata_and_trace(
             },
         )
 
-    settings = Settings(_env_file=None, mimo_api_key=SecretStr("offline-test-key"))
+    # Exercise the live SDK adapter with a mock transport, even when CI selects the fake factory.
+    settings = Settings(
+        _env_file=None,
+        app_env="test",
+        mimo_mode="live",
+        mimo_api_key=SecretStr("offline-test-key"),
+        mimo_base_url="https://offline.invalid/v1",
+    )
     provider = MiMoProvider(settings)
     await provider.client.close()
     provider.client = AsyncOpenAI(
