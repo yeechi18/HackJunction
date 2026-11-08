@@ -157,6 +157,10 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
       <div><p className="sw-eyebrow">SHELFWISE / ORDER CONVERSATION</p><h1>{order.product_name}</h1><p className={`${styles.orderMeta} order-identity`}>订单 {order.id.slice(0, 8)} · 资料版本 {order.revision}</p></div>
       <section className={styles.summary} aria-label="订单概览"><span className={styles.status}>{orderStatusLabel(order)}</span><p>Amazon US · 美式英语 · 单 SKU</p><p>订单已保存在你的卖家账号中，可从“我的订单”找回。</p></section>
     </header>
+    {order.phase === "AWAITING_SELLER" && <section className="surface workspace-panel" aria-label="下一步操作">
+      <h2>下一步：确认交付成品</h2><p>先查看文案与图片，再填写售价和 SKU 确认模拟发布；也可以提出修改。</p>
+      <div className="account-actions"><a className="button button-dark" href="#seller-confirmation">去确认成品 / 提出修改 ↓</a><a className="button button-outline" href="#delivered-package">查看交付包 ↓</a></div>
+    </section>}
     <div className={styles.layout}>
       <div className={styles.primary}>
         <section className={styles.chat} aria-labelledby="agent-heading">
@@ -170,7 +174,7 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
         </section>
         <CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} />
         <DeliveryFactsPanel key={order.revision} order={order} csrfToken={csrfToken} refresh={refresh} />
-        <DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} />
+        <div id="delivered-package" style={{ scrollMarginTop: 24 }}><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /></div>
         <SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} />
         <SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} />
       </div>

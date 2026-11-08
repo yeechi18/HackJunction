@@ -28,7 +28,7 @@ export function IntakeApproval({ orderId }: { orderId: string }) {
   </>;
 }
 
-function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOrder; csrfToken: string; refresh: () => void }) {
+export function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOrder; csrfToken: string; refresh: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [submittedId, setSubmittedId] = useState("");

@@ -153,7 +153,7 @@ function PublicationWorkspace({ order, csrfToken, refresh, viewedVersionId = nul
   const simulated = publication?.mode === "simulated";
   function queued(result: Queued) { setQueuedId(result.command_id); setNotice("请求已入队，处理进度与实际结果会在订单中更新。"); setRevision(current => current + 1); }
 
-  return <section className={`surface workspace-panel ${styles.panel}`} aria-label="卖家反馈与发布确认">
+  return <section className={`surface workspace-panel ${styles.panel}`} id="seller-confirmation" style={{ scrollMarginTop: 24 }} aria-label="卖家反馈与发布确认">
     <div className="panel-heading"><h2>反馈与发布确认</h2><button className="text-button" type="button" onClick={() => { setRevision(current => current + 1); refresh?.(); }}>刷新 ↻</button></div>
     <p className={styles.mode}>{publication && !simulated ? "当前请求的发布模式尚未接通，请联系负责人核实。" : "当前发布为模拟模式，不代表 Amazon 真实上架、付款或成交。"}</p>
     {error && <p className={styles.error} role="alert">{error}</p>}
