@@ -162,3 +162,18 @@ class InternalOrder(OrderSummary):
 
 class InternalOrderList(BaseModel):
     items: list[OrderSummary]
+
+
+class OperationsRun(BaseModel):
+    id: UUID
+    order_id: UUID
+    role: str
+    status: str
+    model: str | None
+    usage: dict
+    elapsed_seconds: float | None
+    error_summary: str | None
+    created_at: datetime
+    finished_at: datetime | None = None
+    step: str | None = None
+    result: dict | None = None

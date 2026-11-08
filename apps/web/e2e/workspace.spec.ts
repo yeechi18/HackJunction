@@ -116,6 +116,9 @@ test("内部入口要求登录，负责人可查看演示订单并退出", async
   await page.getByRole("link", { name: new RegExp(productName) }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(productName);
   await expect(page.getByRole("heading", { name: "卖家信息", exact: true })).toBeVisible();
+  const { id: orderId } = await response.json();
+  await page.getByRole("link", { name: /前往审批中心处理接单/ }).click();
+  await page.locator(".ops-row").filter({ hasText: orderId.slice(0, 8) }).getByRole("button", { name: "接单决定", exact: true }).click();
   await expect(page.getByRole("button", { name: "提交接单批准", exact: true })).toBeEnabled();
   await expect(page.getByRole("button", { name: "提交拒绝接单", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: /退出登录/ }).click();

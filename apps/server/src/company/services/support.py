@@ -31,7 +31,7 @@ from company.schemas.support import (
     TokenTotals,
 )
 
-INTAKE_PHASES = {"INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"}
+SUPPORT_RESUME_PHASES = {"INTAKE", "NEEDS_INFO"}
 
 
 def request_hash(value) -> str:
@@ -154,7 +154,7 @@ async def request_support(
             OrderEvent(
                 order_id=order_id,
                 kind="support_requested",
-                message="已请求人工客服，自动获客回复暂停；生产流程保持原状态。",
+                message="已请求人工客服，自动聊天回复暂停，订单工作流继续。",
             )
         )
     key = key or f"request:{ticket.id}:{digest[:24]}"
@@ -226,7 +226,9 @@ async def owner_reply(
             .limit(1)
         )
         resume = (
-            order.phase in INTAKE_PHASES and order.pending_command_id is None and active_job is None
+            order.phase in SUPPORT_RESUME_PHASES
+            and order.pending_command_id is None
+            and active_job is None
         )
         if resume:
             command = Command(

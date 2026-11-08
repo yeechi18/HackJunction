@@ -56,7 +56,7 @@ function MessageComposer({ order, csrfToken, onSent }: { order: Order; csrfToken
     finally { setBusy(false); }
   }
 
-  if (order.ai_reply_paused) return <div className="form-notice notice-warning" role="status" aria-label="自动回复状态">本单已转交人工处理，获客 Agent 自动回复已暂停。请在“联系人工协助”中继续沟通；负责人回复并结束人工处理后，自动回复将恢复。{content.trim() && <p>你尚未发送的消息已保留。</p>}</div>;
+  if (order.ai_reply_paused) return <div className="form-notice notice-warning" role="status" aria-label="自动回复状态">人工客服工单处理中，自动聊天回复已暂停。资料审查和接单审批照常进行。请在“联系人工协助”中继续沟通。{content.trim() && <p>你尚未发送的消息已保留。</p>}</div>;
   if (!allowed && !content.trim()) return <p className="field-help message-composer-closed">当前订单状态暂不接受新消息。</p>;
   return <form className="message-composer" onSubmit={submit}><label htmlFor="seller-message">给这份订单留个消息</label><textarea id="seller-message" value={content} onChange={event => setContent(event.target.value)} placeholder="补充你的想法或需要说明的事项。" maxLength={10000} rows={3} disabled={busy} readOnly={!allowed} required /><div><p className="field-help">{allowed ? "消息会交给获客 Agent，结合本版资料继续审查。" : "当前阶段不能发送，未发送草稿仍保留在此。"}</p><button type="submit" className="button button-dark button-small" disabled={busy || !content.trim() || !allowed}>{busy ? "发送中…" : "发送消息"}<span aria-hidden="true">↗</span></button></div>{sent && <p className="form-notice notice-success" role="status">消息已保存。{["queued", "running", "processing"].includes(order.workflow_status) ? "正在等待获客 Agent 处理，回复会自动出现在沟通记录中。" : "请查看沟通记录中的最新回复。"}若长时间未更新，请查看上方订单进度。</p>}{error && <ErrorNotice>{error}</ErrorNotice>}</form>;
 }
@@ -108,7 +108,7 @@ function Conversation({ order, messages, events }: { order: Order; messages: Mes
             }
             const { message } = entry;
             const seller = message.role === "seller";
-            const author = seller ? "你" : message.role === "owner" ? "负责人" : "上架顾问";
+            const author = seller ? "你" : ["owner", "human"].includes(message.role) ? "负责人" : "上架顾问";
             return (
               <li className={`${styles.message} ${seller ? styles.seller : ""}`} key={`message-${message.id}`}>
                 <span className={styles.avatar} aria-hidden="true">{seller ? "你" : author === "负责人" ? "负" : "✦"}</span>

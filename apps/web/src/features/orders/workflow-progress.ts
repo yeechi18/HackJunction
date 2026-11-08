@@ -5,7 +5,6 @@ export function pollIntervalFor(order: Pick<ProgressOrder, "workflow_status">): 
 }
 
 export function workflowProgress(order: ProgressOrder): { title: string; description: string; tone: string } {
-  if (order.ai_reply_paused && ["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"].includes(order.phase)) return { title: "已转交人工，自动获客回复暂停", description: "负责人正在处理本单。请在人工协助中继续沟通；负责人结束人工处理后会恢复自动资料审查。", tone: "waiting" };
   const stage: Record<string, string> = {
     INTAKE: "资料审查", NEEDS_INFO: "资料审查", AWAITING_ACCEPTANCE: "资料审查",
     RESEARCH: "商品研究", GENERATION: "内容生成", REVIEW: "内容审校", NEEDS_IMAGE: "商品图片制作",
@@ -19,7 +18,7 @@ export function workflowProgress(order: ProgressOrder): { title: string; descrip
       ? { title: "需要补充商品参考图", description: "请上传能够准确呈现本商品的参考图，图片制作和图文审校会继续处理。", tone: "waiting" }
       : order.phase === "AWAITING_SELLER"
       ? { title: "成品已交付，等待你的确认", description: "请查看已放行的交付版本，可提出修改，或核对售价与 SKU 后确认模拟发布。", tone: "waiting" }
-      : { title: "需要你补充或核对资料", description: "请查看上架顾问的回复，补充已有商品信息或表达偏好。保存后会重新审查。", tone: "waiting" };
+      : { title: "需要你补充或核对资料", description: "补充已有商品信息或表达偏好，保存后会重新审查。", tone: "waiting" };
     case "waiting_for_owner": return order.phase === "AWAITING_RELEASE"
       ? { title: "候选版本等待负责人核对", description: "负责人将核对文案、图片与审校记录。放行后，成品才会出现在卖家的交付包中。", tone: "waiting" }
       : { title: "资料审查通过，等待负责人接单", description: "负责人将查看本版资料并决定是否接单，结果会在这里更新。", tone: "waiting" };

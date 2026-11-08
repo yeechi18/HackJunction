@@ -71,9 +71,30 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     await expect(references.locator('input[type="file"]')).toHaveCount(0);
     await expect(references.getByRole("button", { name: /删除参考图|上传参考图/ })).toHaveCount(0);
     await expect(owner.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
+    await owner.getByRole("link", { name: /前往审批中心处理接单/ }).click();
+    await owner.locator(".ops-row").filter({ hasText: order.id.slice(0, 8) }).getByRole("button", { name: "接单决定", exact: true }).click();
     await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
     await expect.poll(() => phase(owner, order.id), { timeout: 30000 }).toBe("AWAITING_RELEASE");
+    await owner.goto(`/internal/orders/${order.id}`);
     await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
+    const runsPath = "/api/v1/internal/orders/agent-runs";
+    expect((await seller.request.get(runsPath)).status()).toBe(401);
+    const recordedRoles = async () => {
+      const response = await owner.request.get(runsPath);
+      expect(response.ok()).toBe(true);
+      return (await response.json())
+        .filter((run: { order_id: string }) => run.order_id === order.id)
+        .map((run: { role: string }) => run.role);
+    };
+    expect(await recordedRoles()).toEqual(expect.arrayContaining(["acquisition", "research", "generation", "review"]));
+    await owner.getByRole("link", { name: "Agent 监控", exact: true }).click();
+    await owner.getByRole("button", { name: "研究 Agent", exact: true }).click();
+    await owner.getByLabel("订单筛选").selectOption(order.id);
+    const timeline = owner.getByRole("list", { name: "执行时间线" });
+    await expect(timeline.getByText("成功", { exact: true }).first()).toBeVisible();
+    await timeline.getByText("执行详情", { exact: true }).first().click();
+    await expect(timeline.getByText("定价依据", { exact: true }).first()).toBeVisible();
+    await owner.goto(`/internal/orders/${order.id}`);
     const beforeRelease = await seller.request.get(`/api/v1/orders/${order.id}/deliverables`);
     expect((await beforeRelease.json()).items).toHaveLength(0);
     expect((await seller.request.get(`/api/v1/orders/${order.id}/download`)).status()).toBe(404);
@@ -170,6 +191,11 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     await owner.setViewportSize({ width: 390, height: 844 });
     expect(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await screenshot(owner, "owner-closed-loop-mobile.png");
+    expect(await recordedRoles()).toContain("publishing");
+    await owner.getByRole("link", { name: "运行日志", exact: true }).click();
+    await owner.getByLabel("筛选 Agent").selectOption("publishing");
+    await expect(owner.getByRole("row").filter({ hasText: order.id.slice(0, 8) }).getByText("成功", { exact: true })).toBeVisible();
+    expect(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await seller.setViewportSize({ width: 390, height: 844 });
     expect(await seller.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await screenshot(seller, "seller-closed-loop-mobile.png");

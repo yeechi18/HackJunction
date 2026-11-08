@@ -24,7 +24,7 @@ test("获客聊天显示处理反馈，人工接管暂停，负责人结束后�
   await expect(seller.locator(".message-composer").getByRole("status")).toContainText("消息已保存");
   await seller.getByLabel("需要协助的问题", { exact: true }).fill("虚构测试：请负责人先确认资料。");
   await seller.getByRole("button", { name: "转交人工处理", exact: true }).click();
-  await expect(seller.getByRole("status", { name: "自动回复状态", exact: true })).toContainText("自动回复已暂停");
+  await expect(seller.getByRole("status", { name: "自动回复状态", exact: true })).toContainText("自动聊天回复已暂停");
   await expect(seller.getByLabel("给这份订单留个消息")).toHaveCount(0);
 
   const context = await browser.newContext({ baseURL });
@@ -38,16 +38,12 @@ test("获客聊天显示处理反馈，人工接管暂停，负责人结束后�
     await owner.getByRole("link", { name: new RegExp(name) }).click();
     await owner.getByLabel("人工回复", { exact: true }).fill("虚构测试：人工核对已结束，请继续自动审查。");
     await owner.getByRole("checkbox", { name: "回复后结束本次人工处理", exact: true }).check();
-    const before = await (await seller.request.get(`/api/v1/orders/${orderId}/messages`)).json();
-    const previousReplies = before.items.filter((item: { role: string }) => item.role === "assistant").length;
     await owner.getByRole("button", { name: "回复并结束处理", exact: true }).click();
     await expect.poll(async () => (await (await seller.request.get(`/api/v1/orders/${orderId}`)).json()).ai_reply_paused).toBe(false);
     await seller.locator(".workspace-toolbar").getByRole("button", { name: /刷新/ }).click();
     await expect(seller.getByRole("status", { name: "自动回复状态", exact: true })).toHaveCount(0);
-    await expect.poll(async () => {
-      const messages = await (await seller.request.get(`/api/v1/orders/${orderId}/messages`)).json();
-      return messages.items.filter((item: { role: string }) => item.role === "assistant").length;
-    }).toBeGreaterThan(previousReplies);
+    await expect(seller.getByText("资料审查通过，等待负责人接单", { exact: true })).toBeVisible();
+    await expect(seller.getByText("虚构测试：人工核对已结束，请继续自动审查。", { exact: true })).toBeVisible();
     await expect(seller.getByLabel("给这份订单留个消息")).toBeEditable();
   } finally { await context.close(); }
 });

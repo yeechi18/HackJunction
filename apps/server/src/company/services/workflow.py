@@ -237,20 +237,6 @@ class WorkflowContext:
                 await self._stale(session, order, command, "旧命令重试预算已用尽，未自动重新执行。")
             if command.status in FINISHED_COMMANDS:
                 return {"phase": order.phase, "route": _route(order.phase)}
-            if await ai_reply_paused(session, order.id):
-                command.status = "applied"
-                if order.pending_command_id == command.id:
-                    order.pending_command_id = None
-                session.add(
-                    OrderEvent(
-                        order_id=order.id,
-                        kind="intake_reply_paused",
-                        visibility="internal",
-                        message="人工工单处理中，已暂停本次自动获客回复。",
-                        payload={"command_id": str(command.id)},
-                    )
-                )
-                return {"phase": order.phase, "route": "wait"}
             if order.revision != command.expected_revision or order.phase not in WAITING_PHASES:
                 await self._stale(
                     session, order, command, "输入或订单阶段已变化，未应用旧的资料审查。"
@@ -328,20 +314,7 @@ class WorkflowContext:
             run.result = result.model_dump(mode="json")
             record_call(run, "usage", self.provider.last_call)
             run.finished_at = now()
-            if await ai_reply_paused(session, order.id):
-                run.status, command.status = "suppressed", "applied"
-                if order.pending_command_id == command.id:
-                    order.pending_command_id = None
-                session.add(
-                    OrderEvent(
-                        order_id=order.id,
-                        kind="intake_reply_suppressed",
-                        visibility="internal",
-                        message="人工接管期间的模型结果已记录用量，未发送自动回复。",
-                        payload={"command_id": str(command.id), "run_id": str(run.id)},
-                    )
-                )
-            elif order.revision != input_revision or order.phase not in WAITING_PHASES:
+            if order.revision != input_revision or order.phase not in WAITING_PHASES:
                 run.status = "stale"
                 await self._stale(
                     session, order, command, "商品资料已更新，旧审查结果未覆盖新资料。"
@@ -353,23 +326,28 @@ class WorkflowContext:
                 order.updated_at = now()
                 if order.pending_command_id == command.id:
                     order.pending_command_id = None
-                content = result.summary
-                if result.questions:
-                    content += "\n" + "\n".join(f"• {question}" for question in result.questions)
-                session.add(
-                    Message(
-                        order_id=order.id,
-                        role="assistant",
-                        content=content,
-                        input_revision=input_revision,
+                reply_paused = await ai_reply_paused(session, order.id)
+                if not reply_paused:
+                    content = result.summary
+                    if result.questions:
+                        questions = "\n".join(f"• {question}" for question in result.questions)
+                        content += "\n" + questions
+                    session.add(
+                        Message(
+                            order_id=order.id,
+                            role="assistant",
+                            content=content,
+                            input_revision=input_revision,
+                        )
                     )
-                )
                 session.add(
                     OrderEvent(
                         order_id=order.id,
                         kind="intake_completed",
                         message="商品初审与文案方向已整理，等待负责人决定接单。"
                         if result.ready_for_acceptance
+                        else "商品初审已记录，需要补充资料，可通过人工客服沟通。"
+                        if reply_paused
                         else "商品初审已记录，请查看顾问回复。",
                         payload={
                             "command_id": str(command.id),

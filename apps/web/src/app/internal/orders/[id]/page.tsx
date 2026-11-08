@@ -6,5 +6,5 @@ export const metadata: Metadata = { title: "订单详情｜出海工坊", robots
 
 export default async function InternalOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PortalShell internal><InternalOrderWorkspace key={id} orderId={id} /></PortalShell>;
+  return <PortalShell internal operations><InternalOrderWorkspace key={id} orderId={id} /></PortalShell>;
 }

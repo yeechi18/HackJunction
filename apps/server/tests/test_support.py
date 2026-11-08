@@ -119,6 +119,39 @@ async def test_support_scope_csrf_reuse_human_reply_and_return_to_intake(context
     )
 
 
+async def test_open_support_ticket_does_not_block_intake_or_owner_approval(context):
+    settings, app, _, _, login_owner = context
+    customer, order, csrf = await seller(context)
+    order_id = UUID(order["id"])
+    base = f"/api/v1/orders/{order_id}"
+    ticket = await customer.post(
+        f"{base}/support-requests", json={}, headers={"X-CSRF-Token": csrf}
+    )
+    assert ticket.status_code == 201
+
+    provider = OfflineProvider()
+    assert await process_one_job(
+        settings, provider=provider, order_id=order_id, include_production=False
+    )
+    assert provider.calls == 1
+    status = (await customer.get(base)).json()
+    assert status["phase"] == "AWAITING_ACCEPTANCE" and status["ai_reply_paused"]
+    messages = (await customer.get(f"{base}/messages")).json()["items"]
+    assert all(message["role"] != "assistant" for message in messages)
+
+    owner, owner_csrf = await login_owner()
+    decision = await owner.post(
+        f"/api/v1/internal/orders/{order_id}/decisions",
+        json={"action": "accept", "expected_revision": status["revision"]},
+        headers={"X-CSRF-Token": owner_csrf, "Idempotency-Key": "accept-during-support"},
+    )
+    assert decision.status_code == 202, decision.text
+    assert await process_one_job(
+        settings, provider=provider, order_id=order_id, include_production=False
+    )
+    assert (await customer.get(base)).json()["phase"] == "RESEARCH"
+
+
 async def test_support_does_not_stop_or_restart_production(context):
     _, app, _, _, login_owner = context
     customer, order, csrf = await seller(context)
