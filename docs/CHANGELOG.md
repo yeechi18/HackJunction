@@ -9,13 +9,21 @@
 - 代码与对应日志应一起提交。对话中的一次修改不一定是一次 Git 提交；若多轮修改合并提交，日志也合并记录。
 - 不记录密钥、密码、私有订单链接或真实卖家资料。运行日志保留在被忽略的本地 `var/reports/`。
 
-## 待提交 — 2026-11-08：修复 PR #4 合并后的 CI
+## 待提交 — 2026-11-08：同步最新功能说明
+
+**修改：** README 统一使用上架有方 Shelfwise 名称，将 PR #4 已合并的功能整理为正式说明：账号与建单、出海进阶包、商品初审、版本化英文初稿、有限品牌资料、研究来源与可选竞品搜索、手工/Seedream 图片制作、审校与人工放行、卖家反馈及模拟发布、六个运营页面、故障处理和本单预算授权。补充配置项、默认开关、后台入口、更新步骤及功能边界，移除已过时的试验分支标题与本机图片预览记录。
+
+**验证与运行影响：** 对照当前页面、API、worker 和配置实现核对功能及参数，检查 README 本地文档链接和 `git diff --check`；引用 `41e636d` 已通过的三平台 CI 与本机测试结果，不宣称本轮新增功能验收。仅文档修改，无需重启服务或迁移数据库。
+
+## 2026-11-08 — `41e636d`
+
+提交：`fix: isolate Ark routing tests from CI fake mode`
 
 **问题：** PR #4 已合并到 `main`（`918ac32`）。GitHub Actions 的 Windows、macOS 离线检查与 Ubuntu PostgreSQL 检查均因相同的两项新增 Ark 测试失败：测试继承 CI 的 `APP_ENV=test / MIMO_MODE=fake`，导致实时研究路由选中模拟模型，或显式开发环境与模拟模式组合被配置校验拒绝。
 
 **修改：** 两项测试显式使用 `app_env="development"` 与 `mimo_mode="live"`，独立验证 Ark 路由和研究节点注入。测试只构造适配器或使用替身，不向真实模型发请求；保留应用的测试环境隔离和配置校验，不更改前端、后端业务逻辑或 CI 检查规则。
 
-**验证：** 使用 CI 相同环境变量，本机离线测试 132 项通过、114 项数据库测试按预期跳过；独立 PostgreSQL 完整测试 246 项通过。Python Ruff、前端 lint/typecheck、隔离生产构建（webpack）与 `git diff --check` 均通过。GitHub 三平台结果需以修复提交的新一轮 Actions 为准。
+**验证：** 使用 CI 相同环境变量，本机离线测试 132 项通过、114 项数据库测试按预期跳过；独立 PostgreSQL 完整测试 246 项通过。Python Ruff、前端 lint/typecheck、隔离生产构建（webpack）与 `git diff --check` 均通过。[GitHub Actions](https://github.com/yeechi18/HackJunction/actions/runs/42459690067) 的 Windows、macOS 离线检查和 Ubuntu PostgreSQL 17 集成检查三项均已通过。
 
 **运行影响：** 仅测试与文档变更，无需重启服务、调整业务环境变量或迁移数据库。
 
