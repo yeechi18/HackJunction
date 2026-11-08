@@ -21,7 +21,7 @@ const greeting = "你好，我是你的上架顾问。可以直接描述商品�
 const maxExportSize = 2 * 1024 * 1024;
 type SavedOrder = { id: string; url: string; path: string; productName: string };
 
-export function NewOrderForm() {
+export function NewOrderForm({ overseas = false }: { overseas?: boolean }) {
   const account = useSellerAccount();
   const [fields, setFields] = useState({ product_name: "", product_details: "", domestic_product_url: "", notes: "" });
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -193,7 +193,7 @@ export function NewOrderForm() {
         <span className={styles.spark} aria-hidden="true">✳</span>
       </section>
       <section className={styles.status} aria-labelledby="intake-progress">
-        <span className={styles.eyebrow}>AMAZON US · 一站式上架包</span>
+        <span className={styles.eyebrow}>AMAZON US · {overseas ? "出海进阶包" : "一站式上架包"}</span>
         <h2 id="intake-progress">资料收集进度</h2>
         <div className={styles.progressLabel}><span>{completed === 2 ? "资料已整理 · 可提交" : "填写商品名与已有明细即可"}</span><strong>{completed} / 2</strong></div>
         <progress aria-labelledby="intake-progress" max={2} value={completed} />

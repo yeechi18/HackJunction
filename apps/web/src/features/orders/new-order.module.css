@@ -220,3 +220,22 @@
 .review .button { margin-top: 12px; white-space: normal; }
 .overview > *, .grid > * { min-width: 0; }
 .card input, .card textarea { scroll-margin-top: 20px; }
+
+.customsGuide {
+  margin-bottom: 16px;
+  padding: 16px 20px;
+}
+
+.customsGuide summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.customsGuide p,
+.customsGuide li {
+  line-height: 1.65;
+}
+
+.customsGuide li + li {
+  margin-top: 8px;
+}
