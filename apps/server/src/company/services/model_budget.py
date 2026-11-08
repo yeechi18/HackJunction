@@ -3,6 +3,7 @@
 from sqlalchemy import func, select
 
 from company.persistence.agent_runs import AgentRun
+from company.persistence.models import OrderEvent
 from company.persistence.production import DeliverableVersion, ProductionStepReceipt
 from company.persistence.publication import PublishAttempt
 from company.providers.mimo import ProviderError
@@ -28,6 +29,32 @@ def recorded_tokens(usage: dict) -> int:
     )
 
 
+async def budget_state(session, settings, order_id):
+    usages = []
+    for column, model in [
+        (AgentRun.usage, AgentRun),
+        (ProductionStepReceipt.usage, ProductionStepReceipt),
+        (PublishAttempt.plan_usage, PublishAttempt),
+    ]:
+        usages.extend(await session.scalars(select(column).where(model.order_id == order_id)))
+    grants = await session.scalars(
+        select(OrderEvent.payload).where(
+            OrderEvent.order_id == order_id, OrderEvent.kind == "model_budget_granted"
+        )
+    )
+    granted = sum(item.get("additional_tokens", 0) for item in grants)
+    spent = sum(recorded_tokens(value or {}) for value in usages)
+    limit = settings.order_token_budget + granted
+    return {
+        "used_tokens": spent,
+        "base_limit": settings.order_token_budget,
+        "granted_tokens": granted,
+        "effective_limit": limit,
+        "exhausted": spent >= limit,
+        "additional_grant_available": max(0, 60000 - granted),
+    }
+
+
 async def check_budget(database, settings, order_id, *, new_candidate=False):
     async with database.sessions() as session:
         usages = []
@@ -50,7 +77,8 @@ async def check_budget(database, settings, order_id, *, new_candidate=False):
                 raise OrderBudgetExceeded(
                     "本单存在未返回完整 token 用量的调用，请负责人核查后继续。"
                 )
-        if sum(recorded_tokens(usage or {}) for usage in usages) >= settings.order_token_budget:
+        state = await budget_state(session, settings, order_id)
+        if state["exhausted"]:
             raise OrderBudgetExceeded("本单已记录模型 token 用量达到预算，请负责人检查后调整预算。")
         if new_candidate:
             count = await session.scalar(

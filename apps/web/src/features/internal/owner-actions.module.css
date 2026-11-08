@@ -1,0 +1,5 @@
+.panel { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px; margin:22px 0; padding:22px 24px; border:1px solid #d3ddc7; border-radius:8px; background:#f2f6e9; }
+.panel h2 { margin:0 0 8px; color:#34432c; font-size:18px; font-weight:600; }
+.panel p { margin:0; max-width:680px; color:#526345; font-size:13px; line-height:1.8; }
+.actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+@media(max-width:600px) { .panel { padding:18px; } .actions { width:100%; } }

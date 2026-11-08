@@ -87,7 +87,13 @@ class BundleProvider:
                         "layout": "Use the supplied reference.",
                         "text_overlay": "",
                         "fact_ids": ["fact:material"],
-                    }
+                    },
+                    {
+                        "purpose": "infographic",
+                        "layout": "Product details.",
+                        "text_overlay": "",
+                        "fact_ids": [],
+                    },
                 ],
             }
         elif schema.__name__ == "ReviewDraft":
@@ -172,7 +178,7 @@ async def bundle_context(postgres_test_settings, tmp_path):
                     settings,
                     CreateOrder(
                         product_details="Known test product specifications.",
-                        product_name="Fictional desk clips",
+                        product_name="Test desk clips",
                         facts=[
                             {"key": "material", "value": "silicone", "confirmed": True},
                             {"key": "pack_quantity", "value": "6", "confirmed": True},

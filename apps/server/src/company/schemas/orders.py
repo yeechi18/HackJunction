@@ -61,6 +61,9 @@ class OrderSummary(BaseModel):
     revision: int
     seller_name: str
     product_name: str
+    required_fact_keys: list[str] = Field(default_factory=list)
+    missing_delivery_fields: list[str] = Field(default_factory=list)
+    delivery_blockers: list[str] = Field(default_factory=list)
     product_details: str | None = None
     domestic_product_url: str | None = None
     facts: list[ProductFact]
@@ -70,6 +73,7 @@ class OrderSummary(BaseModel):
     updated_at: datetime
     allowed_actions: list[str]
     workflow_status: str = "queued"
+    workflow_error: str | None = None
     pending_command_id: UUID | None
     conflicting_fact_keys: list[str]
     ai_reply_paused: bool = False
@@ -162,3 +166,18 @@ class InternalOrder(OrderSummary):
 
 class InternalOrderList(BaseModel):
     items: list[OrderSummary]
+
+
+class OperationsRun(BaseModel):
+    id: UUID
+    order_id: UUID
+    role: str
+    status: str
+    model: str | None
+    usage: dict
+    elapsed_seconds: float | None
+    error_summary: str | None
+    created_at: datetime
+    finished_at: datetime | None = None
+    step: str | None = None
+    result: dict | None = None

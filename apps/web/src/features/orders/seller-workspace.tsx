@@ -1,4 +1,6 @@
 "use client";
+import { CopyPreviewPanel } from "./copy-preview-panel";
+import { DeliveryFactsPanel } from "./delivery-facts-panel";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AccessError, ErrorNotice, LoadingPanel } from "@/components/async-feedback";
@@ -56,7 +58,7 @@ function MessageComposer({ order, csrfToken, onSent }: { order: Order; csrfToken
     finally { setBusy(false); }
   }
 
-  if (order.ai_reply_paused) return <div className="form-notice notice-warning" role="status" aria-label="自动回复状态">本单已转交人工处理，获客 Agent 自动回复已暂停。请在“联系人工协助”中继续沟通；负责人回复并结束人工处理后，自动回复将恢复。{content.trim() && <p>你尚未发送的消息已保留。</p>}</div>;
+  if (order.ai_reply_paused) return <div className="form-notice notice-warning" role="status" aria-label="自动回复状态">人工客服工单处理中，自动聊天回复已暂停。资料审查和接单审批照常进行。请在“联系人工协助”中继续沟通。{content.trim() && <p>你尚未发送的消息已保留。</p>}</div>;
   if (!allowed && !content.trim()) return <p className="field-help message-composer-closed">当前订单状态暂不接受新消息。</p>;
   return <form className="message-composer" onSubmit={submit}><label htmlFor="seller-message">给这份订单留个消息</label><textarea id="seller-message" value={content} onChange={event => setContent(event.target.value)} placeholder="补充你的想法或需要说明的事项。" maxLength={10000} rows={3} disabled={busy} readOnly={!allowed} required /><div><p className="field-help">{allowed ? "消息会交给获客 Agent，结合本版资料继续审查。" : "当前阶段不能发送，未发送草稿仍保留在此。"}</p><button type="submit" className="button button-dark button-small" disabled={busy || !content.trim() || !allowed}>{busy ? "发送中…" : "发送消息"}<span aria-hidden="true">↗</span></button></div>{sent && <p className="form-notice notice-success" role="status">消息已保存。{["queued", "running", "processing"].includes(order.workflow_status) ? "正在等待获客 Agent 处理，回复会自动出现在沟通记录中。" : "请查看沟通记录中的最新回复。"}若长时间未更新，请查看上方订单进度。</p>}{error && <ErrorNotice>{error}</ErrorNotice>}</form>;
 }
@@ -108,7 +110,7 @@ function Conversation({ order, messages, events }: { order: Order; messages: Mes
             }
             const { message } = entry;
             const seller = message.role === "seller";
-            const author = seller ? "你" : message.role === "owner" ? "负责人" : "上架顾问";
+            const author = seller ? "你" : ["owner", "human"].includes(message.role) ? "负责人" : "上架顾问";
             return (
               <li className={`${styles.message} ${seller ? styles.seller : ""}`} key={`message-${message.id}`}>
                 <span className={styles.avatar} aria-hidden="true">{seller ? "你" : author === "负责人" ? "负" : "✦"}</span>
@@ -155,6 +157,10 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
       <div><p className="sw-eyebrow">SHELFWISE / ORDER CONVERSATION</p><h1>{order.product_name}</h1><p className={`${styles.orderMeta} order-identity`}>订单 {order.id.slice(0, 8)} · 资料版本 {order.revision}</p></div>
       <section className={styles.summary} aria-label="订单概览"><span className={styles.status}>{orderStatusLabel(order)}</span><p>Amazon US · 美式英语 · 单 SKU</p><p>订单已保存在你的卖家账号中，可从“我的订单”找回。</p></section>
     </header>
+    {order.phase === "AWAITING_SELLER" && <section className="surface workspace-panel" aria-label="下一步操作">
+      <h2>下一步：确认交付成品</h2><p>先查看文案与图片，再填写售价和 SKU 提交成品确认；也可以提出修改。</p>
+      <div className="account-actions"><a className="button button-dark" href="#seller-confirmation">去确认成品 / 提出修改 ↓</a><a className="button button-outline" href="#delivered-package">查看交付包 ↓</a></div>
+    </section>}
     <div className={styles.layout}>
       <div className={styles.primary}>
         <section className={styles.chat} aria-labelledby="agent-heading">
@@ -166,16 +172,18 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
             <div className={`${styles.syncFooter} workspace-toolbar`}><span>最近检查 {checkedAt} · 每 {pollIntervalMs / 1000} 秒同步</span><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>
           </div>
         </section>
-        <DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} />
+        <details className="workspace-disclosure"><summary>查看英文初稿</summary><div className="disclosure-body"><CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} /></div></details>
+        <details className="workspace-disclosure"><summary>核对交付资料</summary><div className="disclosure-body"><DeliveryFactsPanel key={order.revision} order={order} csrfToken={csrfToken} refresh={refresh} /></div></details>
+        <div id="delivered-package" style={{ scrollMarginTop: 24 }}><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /></div>
         <SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} />
-        <SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} />
+        <details className="workspace-disclosure"><summary>联系负责人 / 查看处理记录</summary><div className="disclosure-body"><SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /></div></details>
       </div>
       <aside className={styles.sidebar} aria-label="订单资料">
         <FactsPanel order={order} action={!editing && order.allowed_actions.includes("supplement") ? <button type="button" className={styles.editButton} onClick={() => { setEditing(true); setNotice(""); }}>补充商品资料 <span aria-hidden="true">↗</span></button> : undefined} />
         {notice && <div className="form-notice notice-success" role="status">{notice}</div>}
         {editing && <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => { setEditing(false); setNotice("补充资料已保存，等待重新审查。"); refresh(); }} onCancel={() => setEditing(false)} refresh={refresh} />}
-        <section className="surface workspace-panel"><IntakeAnalysisPanel order={order} /></section>
-        <ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />
+        <details className="workspace-disclosure"><summary>查看资料分析</summary><div className="disclosure-body"><section className="surface workspace-panel"><IntakeAnalysisPanel order={order} /></section></div></details>
+        <details className="workspace-disclosure"><summary>补充参考图片</summary><div className="disclosure-body"><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} /></div></details>
       </aside>
     </div>
   </>;

@@ -102,6 +102,9 @@ async def upload(order_id: UUID, request: Request, database: DB, settings: Confi
 
     await refresh_intake_sources(database, order_id)
     await queue_image_resume(database, order_id, result.id)
+    from company.services.automatic_images import queue_uploaded_images
+
+    await queue_uploaded_images(database, settings, order_id)
     return result
 
 

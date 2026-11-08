@@ -11,14 +11,16 @@ type AssetView = components["schemas"]["AssetView"];
 
 type Props = { orderId: string; csrfToken: string; internal?: boolean };
 const kindLabels: Record<string, string> = {
-  reference: "商品参考图",
+  reference: "商品参考图", reference_edit: "外部参考编辑候选（查看任务核对状态）", concept: "概念预览（不交付）",
   main_candidate: "主图候选",
   infographic: "商品信息附图",
 };
 
 function sourceLabel(asset: AssetView): string {
   if (asset.method === "upload_normalized_png") return "来源：上传的商品参考图";
-  if (asset.method === "reference_template_v1") return "来源：以参考图制作的排版素材";
+  if (asset.method.startsWith("reference_template_")) return "来源：原参考图程序排版，未调用绘图模型";
+  if (asset.method === "ark_seedream") return "来源：Seedream API 实际生成，需本版审校与放行";
+  if (asset.method === "external_image_task") return "来源：外部绘图任务回传，需本版审校与放行";
   return asset.kind === "reference" ? "来源：商品参考素材" : "来源：商品图片制作";
 }
 
@@ -106,7 +108,7 @@ function AssetsWorkspace({ orderId, csrfToken, internal = false }: Props) {
     setBusy(true); setUploadError(""); setUploadNotice("");
     try {
       await apiFetch<AssetView>(assetPath, { method: "POST", body, headers: csrfHeaders(csrfToken), timeoutMs: 30000 });
-      setUploadNotice("参考图已保存，可在下方查看。");
+      setUploadNotice("参考图已保存，可在下方查看；若已启用自动制图，候选图将在后台制作，审核放行后进入交付包。");
       setFile(null);
       if (fileInput.current) fileInput.current.value = "";
       setRevision(current => current + 1);

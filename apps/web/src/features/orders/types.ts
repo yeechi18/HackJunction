@@ -13,6 +13,9 @@ export type InternalOrder = Schemas["InternalOrder"];
 export type AgentRun = Schemas["AgentRunView"];
 
 export const factLabels: Record<string, string> = {
+  brand: "品牌",
+  product_type: "产品类别",
+  net_volume: "单瓶净含量",
   material: "材质",
   dimensions: "尺寸",
   pack_quantity: "包装数量",

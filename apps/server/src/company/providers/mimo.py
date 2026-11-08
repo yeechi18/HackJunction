@@ -152,9 +152,13 @@ class MiMoProvider:
         result = await self.chat([instruction, *messages], json_mode=True, max_tokens=max_tokens)
         try:
             parsed = schema.model_validate_json(result.content)
-        except ValidationError:
+        except ValidationError as error:
+            fields = "; ".join(
+                f"{'.'.join(str(p) for p in item['loc'])}: {item['type']}"
+                for item in error.errors(include_input=False, include_url=False)[:6]
+            )
             raise ProviderError(
-                "MiMo JSON did not match the required application schema.",
+                f"MiMo JSON did not match the required application schema ({fields}).",
                 call_usage=observed_call(result),
             ) from None
         return parsed, result

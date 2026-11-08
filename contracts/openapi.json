@@ -499,6 +499,65 @@
         }
       }
     },
+    "/api/v1/internal/orders/agent-runs": {
+      "get": {
+        "tags": [
+          "internal orders"
+        ],
+        "summary": "List Agent Runs",
+        "operationId": "list_agent_runs_api_v1_internal_orders_agent_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "include_trace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Trace"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OperationsRun"
+                  },
+                  "title": "Response List Agent Runs Api V1 Internal Orders Agent Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/orders/{order_id}": {
       "get": {
         "tags": [
@@ -1842,6 +1901,557 @@
           }
         }
       }
+    },
+    "/api/v1/orders/{order_id}/required-facts": {
+      "post": {
+        "tags": [
+          "copy previews"
+        ],
+        "summary": "Confirm Required Facts",
+        "operationId": "confirm_required_facts_api_v1_orders__order_id__required_facts_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplementInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{order_id}/copy-preview": {
+      "get": {
+        "tags": [
+          "copy previews"
+        ],
+        "summary": "Get Preview",
+        "operationId": "get_preview_api_v1_orders__order_id__copy_preview_get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "copy previews"
+        ],
+        "summary": "Create Preview",
+        "operationId": "create_preview_api_v1_orders__order_id__copy_preview_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{order_id}/brand-basics": {
+      "post": {
+        "tags": [
+          "copy previews"
+        ],
+        "summary": "Apply Brand Basics",
+        "operationId": "apply_brand_basics_api_v1_orders__order_id__brand_basics_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/research-sources": {
+      "post": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Import Evidence",
+        "operationId": "import_evidence_api_v1_internal_orders__order_id__research_sources_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/model-budget": {
+      "get": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Get Model Budget",
+        "operationId": "get_model_budget_api_v1_internal_orders__order_id__model_budget_get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Grant Model Budget",
+        "operationId": "grant_model_budget_api_v1_internal_orders__order_id__model_budget_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetGrantInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/integration-status": {
+      "get": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Integration Status",
+        "operationId": "integration_status_api_v1_internal_orders__order_id__integration_status_get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/competitor-search": {
+      "post": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Competitor Search",
+        "operationId": "competitor_search_api_v1_internal_orders__order_id__competitor_search_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/image-brief": {
+      "get": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Image Brief",
+        "operationId": "image_brief_api_v1_internal_orders__order_id__image_brief_get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/orders/{order_id}/generated-images": {
+      "post": {
+        "tags": [
+          "research and image integrations"
+        ],
+        "summary": "Import Generated Image",
+        "operationId": "import_generated_image_api_v1_internal_orders__order_id__generated_images_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "expected_revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Expected Revision"
+            }
+          },
+          {
+            "name": "input_digest",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "title": "Input Digest"
+            }
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "concept",
+                "reference_edit"
+              ],
+              "type": "string",
+              "default": "concept",
+              "title": "Purpose"
+            }
+          },
+          {
+            "name": "approved",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Approved"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2302,6 +2912,39 @@
           "payload"
         ],
         "title": "Body_intake_chat_api_v1_orders_intake_chat_post"
+      },
+      "BudgetGrantInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "additional_tokens": {
+            "type": "integer",
+            "const": 20000,
+            "title": "Additional Tokens",
+            "default": 20000
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 8,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "request_id",
+          "reason"
+        ],
+        "title": "BudgetGrantInput"
       },
       "CodeDeliveryView": {
         "properties": {
@@ -2843,6 +3486,48 @@
         ],
         "title": "EventView"
       },
+      "EvidenceInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "pattern": "^https?://"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "source",
+          "content"
+        ],
+        "title": "EvidenceInput"
+      },
       "EvidenceList": {
         "properties": {
           "items": {
@@ -3258,6 +3943,27 @@
             "type": "string",
             "title": "Product Name"
           },
+          "required_fact_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Fact Keys"
+          },
+          "missing_delivery_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Delivery Fields"
+          },
+          "delivery_blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Delivery Blockers"
+          },
           "product_details": {
             "anyOf": [
               {
@@ -3329,6 +4035,17 @@
             "type": "string",
             "title": "Workflow Status",
             "default": "queued"
+          },
+          "workflow_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Error"
           },
           "pending_command_id": {
             "anyOf": [
@@ -3546,6 +4263,119 @@
         ],
         "title": "MessageView"
       },
+      "OperationsRun": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "order_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Order Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "usage": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Usage"
+          },
+          "elapsed_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Seconds"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "role",
+          "status",
+          "model",
+          "usage",
+          "elapsed_seconds",
+          "error_summary",
+          "created_at"
+        ],
+        "title": "OperationsRun"
+      },
       "OrderMetrics": {
         "properties": {
           "order_id": {
@@ -3705,6 +4535,27 @@
             "type": "string",
             "title": "Product Name"
           },
+          "required_fact_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Fact Keys"
+          },
+          "missing_delivery_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Delivery Fields"
+          },
+          "delivery_blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Delivery Blockers"
+          },
           "product_details": {
             "anyOf": [
               {
@@ -3776,6 +4627,17 @@
             "type": "string",
             "title": "Workflow Status",
             "default": "queued"
+          },
+          "workflow_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Error"
           },
           "pending_command_id": {
             "anyOf": [
@@ -3876,6 +4738,20 @@
           "status"
         ],
         "title": "PageObservation"
+      },
+      "PreviewInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_revision"
+        ],
+        "title": "PreviewInput"
       },
       "ProductFact": {
         "properties": {
@@ -4434,6 +5310,28 @@
           "revision"
         ],
         "title": "RetryQueued"
+      },
+      "SearchInput": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "pattern": "^[^\\r\\n]+$",
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "query"
+        ],
+        "title": "SearchInput"
       },
       "SellerSessionView": {
         "properties": {

@@ -149,7 +149,13 @@ async def delivery_context(postgres_test_settings: Settings, tmp_path):
                                 "layout": "Preserve the product reference.",
                                 "text_overlay": "",
                                 "fact_ids": [],
-                            }
+                            },
+                            {
+                                "purpose": "infographic",
+                                "layout": "Product details.",
+                                "text_overlay": "",
+                                "fact_ids": [],
+                            },
                         ],
                     },
                     assets=[],

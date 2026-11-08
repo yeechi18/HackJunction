@@ -27,7 +27,12 @@ def allowed_actions(phase: str, *, internal: bool, pending: bool) -> list[str]:
         if phase == OrderPhase.AWAITING_RELEASE:
             return ["release", "veto"]
         return []
-    if phase in {OrderPhase.INTAKE, OrderPhase.NEEDS_INFO, OrderPhase.AWAITING_ACCEPTANCE}:
+    if phase in {
+        OrderPhase.INTAKE,
+        OrderPhase.NEEDS_INFO,
+        OrderPhase.AWAITING_ACCEPTANCE,
+        OrderPhase.AWAITING_RELEASE,
+    }:
         return ["message", "supplement"]
     if phase == OrderPhase.NEEDS_IMAGE:
         return ["upload_image"]

@@ -135,7 +135,7 @@ test("球衣资料无需固定参数核实，负责人能查看初审并决定�
   await page.getByLabel(/补充商品说明与期望卖点/).fill("面向阿根廷球迷，文案简洁。");
   await page.getByRole("button", { name: /保存资料，创建订单/ }).click();
   const link = new URL(await page.getByLabel("私有订单链接").inputValue());
-  const orderId = link.pathname.split("/").pop();
+  const orderId = link.pathname.split("/").at(-1)!;
   await page.getByRole("link", { name: /查看订单进度/ }).click();
   await expect(page.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
   const response = await page.request.get(`/api/v1/orders/${orderId}`);
@@ -152,13 +152,13 @@ test("球衣资料无需固定参数核实，负责人能查看初审并决定�
     await owner.getByRole("button", { name: /登录工作台/ }).click();
     await owner.waitForURL("**/internal/orders");
     await owner.goto(`/internal/orders/${orderId}`);
-    await expect(owner.getByRole("button", { name: "提交接单批准", exact: true })).toBeEnabled();
-    await expect(owner.getByRole("button", { name: "提交拒绝接单", exact: true })).toBeEnabled();
     await expect(owner.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
     const readonly = owner.getByRole("region", { name: "商品图片与参考素材" });
     await expect(readonly.locator('input[type="file"]')).toHaveCount(0);
     const denied = await owner.request.post(`/api/v1/orders/${orderId}/assets`, { headers: { "X-CSRF-Token": (await (await owner.request.get("/api/v1/internal/auth/session")).json()).csrf_token }, multipart: { file: { name: "test.png", mimeType: "image/png", buffer: Buffer.from("not-an-image") } } });
     expect(denied.status()).toBe(403);
+    await owner.getByRole("link", { name: /前往审批中心处理接单/ }).click();
+    await owner.locator(".ops-row").filter({ hasText: orderId.slice(0, 8) }).getByRole("button", { name: "接单决定", exact: true }).click();
     await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
     await expect.poll(async () => (await (await owner.request.get(`/api/v1/internal/orders/${orderId}/production`)).json()).research.length).toBeGreaterThan(0);
     await expect.poll(async () => (await (await owner.request.get(`/api/v1/internal/orders/${orderId}/production`)).json()).versions.length).toBeGreaterThan(0);

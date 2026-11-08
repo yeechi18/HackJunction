@@ -34,6 +34,8 @@ class DecisionInput(InputModel):
     expected_revision: int = Field(ge=1)
     version_id: UUID | None = None
     reason: str | None = Field(default=None, max_length=2000)
+    override_review: bool = False
+    review_token: str | None = Field(default=None, min_length=64, max_length=64)
 
 
 class QueuedCommand(BaseModel):

@@ -44,10 +44,17 @@ def asset_view(asset: Asset, *, deletion_block_reason: str | None = None) -> Ass
 
 
 async def reference_deletion_state(database: AsyncSession, order_id: UUID) -> tuple[set[str], bool]:
-    metadata = await database.scalars(
-        select(Asset.image_metadata).where(Asset.order_id == order_id, Asset.kind != "reference")
+    metadata = list(
+        await database.scalars(
+            select(Asset.image_metadata).where(
+                Asset.order_id == order_id, Asset.kind != "reference"
+            )
+        )
     )
     used_hashes = {item["reference_sha256"] for item in metadata if item.get("reference_sha256")}
+    used_hashes.update(
+        r["sha256"] for item in metadata for r in item.get("references", []) if r.get("sha256")
+    )
     pending_production = await database.scalar(
         select(Job.id)
         .join(Command, Command.id == Job.command_id)
@@ -218,6 +225,7 @@ async def register_rendered_assets(
             is_demo=False,
             delivered_at=None,
             image_metadata={
+                **image.metadata,
                 "text_layers": image.text_layers,
                 "reference_sha256": image.reference_sha256,
                 "requires_subject_verification": True,

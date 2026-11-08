@@ -57,6 +57,9 @@ def postgres_test_settings() -> Settings:
             "app_env": "test",
             "database_url": configuration.test_database_url,
             "mimo_api_key": None,
+            "seedream_enabled": False,
+            "seedream_auto_on_upload": False,
+            "seedream_api_key": None,
         }
     )
 

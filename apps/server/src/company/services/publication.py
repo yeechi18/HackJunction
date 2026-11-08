@@ -17,7 +17,16 @@ from company.config import Settings
 from company.persistence.assets import Asset
 from company.persistence.database import Database
 from company.persistence.deliveries import DeliverySnapshot
-from company.persistence.models import Command, InputSnapshot, Job, Message, Order, OrderEvent, now
+from company.persistence.models import (
+    Command,
+    HumanDecision,
+    InputSnapshot,
+    Job,
+    Message,
+    Order,
+    OrderEvent,
+    now,
+)
 from company.persistence.production import DeliverableVersion
 from company.persistence.publication import (
     FeedbackRequest,
@@ -100,6 +109,30 @@ async def current_delivery(session: AsyncSession, order: Order, version_id: UUID
         )
     )
     version = await session.get(DeliverableVersion, version_id)
+    manual_approval = False
+    if delivery is not None:
+        release = await session.get(Command, delivery.release_command_id)
+        decision = await session.scalar(
+            select(HumanDecision).where(
+                HumanDecision.command_id == delivery.release_command_id,
+                HumanDecision.order_id == order.id,
+                HumanDecision.version_id == version_id,
+                HumanDecision.action == "release",
+                HumanDecision.status == "applied",
+            )
+        )
+        manual_approval = bool(
+            release
+            and decision
+            and release.order_id == order.id
+            and release.kind == "RELEASE"
+            and release.status == "applied"
+            and release.expected_revision == order.revision
+            and release.payload.get("override_review") is True
+            and release.payload.get("owner_acknowledgement", {}).get("version_id")
+            == str(version_id)
+            and release.payload.get("version_id") == str(version_id)
+        )
     if (
         delivery is None
         or delivery.version_id != version_id
@@ -110,7 +143,7 @@ async def current_delivery(session: AsyncSession, order: Order, version_id: UUID
         or version.order_id != order.id
         or version.input_snapshot_id != snapshot.id
         or version.status != "delivered"
-        or not version.full_passed
+        or (not version.full_passed and not manual_approval)
     ):
         raise PublicationError(
             "Only the latest delivered version for current inputs may be confirmed."
@@ -357,9 +390,7 @@ async def feedback_base(session: AsyncSession, order: Order, version_id: UUID) -
             raise PublicationError(
                 "Feedback must target the latest delivered base for current input."
             ) from None
-        historical = SimpleNamespace(
-            id=order.id, revision=latest.input_revision
-        )
+        historical = SimpleNamespace(id=order.id, revision=latest.input_revision)
         return await current_delivery(session, historical, version_id)
 
 

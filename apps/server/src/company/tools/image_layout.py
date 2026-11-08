@@ -66,6 +66,9 @@ def _dimension_label(fact: dict) -> str:
     unit = str(fact.get("unit") or "").strip()
     for source, replacement in {"毫米": " mm", "厘米": " cm", "英寸": " in", "×": "x"}.items():
         value, unit = value.replace(source, replacement), unit.replace(source, replacement)
+    # Do not append a second unit to already qualified dimensions.
+    if unit and re.search(rf"\b{re.escape(unit)}\b", value, re.I):
+        unit = ""
     result = " ".join(f"{value} {unit}".split())
     if (
         not result.isascii()
@@ -154,6 +157,18 @@ def render_layouts(
         except ImageLayoutError:
             pass
     dimension_heading = "Dimensions"
+    volume = verified.get("net_volume")
+    if not dimensions and volume:
+        unit = volume.get("unit", "")
+        value = volume.get("value", "")
+        if (
+            re.fullmatch(r"\d+(?:\.\d+)?", value)
+            and float(value) > 0
+            and unit in {"mL", "ml", "L", "l"}
+        ):
+            dimensions = f"{value} {unit}"
+            dimension_ids = [volume["id"]]
+            dimension_heading = "Net volume (per bottle)"
     scope = verified.get("dimension_scope")
     if scope and dimensions:
         value = scope["value"].casefold()
@@ -176,7 +191,7 @@ def render_layouts(
     if quantity:
         labels.append(
             (
-                f"Pack includes: {quantity} pieces",
+                f"Pack includes: {quantity} {'bottles' if volume else 'pieces'}",
                 [verified["pack_quantity"]["id"]],
                 (80, 1060, 1440, 160),
             )
@@ -197,3 +212,43 @@ def render_layouts(
         LayoutImage(_export(main), "main_candidate", main_layers, reference_hash),
         LayoutImage(_export(detail), "infographic", detail_layers, reference_hash),
     ]
+
+
+def finish_external_image(data: bytes, content_type: str | None, task: dict):
+    """Only typeset confirmed labels/watermarks; never describe this as image generation."""
+    normalized = validate_and_normalize(data, content_type)
+    with Image.open(io.BytesIO(normalized.data)) as source:
+        canvas = source.convert("RGB")
+    width, height = canvas.size
+    # Work at a consistent canvas size for readable programmatic type.
+    if width != height or width < 1024:
+        from company.providers.storage import ImageValidationError
+
+        raise ImageValidationError("回传图片需为至少 1024×1024 的正方形，请重新导出。")
+    layers = []
+    draw = ImageDraw.Draw(canvas)
+    if task["kind"] == "infographic" and task.get("text_layers"):
+        left = int(width * 0.70)
+        draw.rectangle((left, 0, width, height), fill="#f6f3ec")
+        for i, label in enumerate(task["text_layers"]):
+            box = (
+                left + 24,
+                int(height * (0.22 + i * 0.28)),
+                width - left - 48,
+                int(height * 0.23),
+            )
+            layout = _draw_text(draw, label["text"], box, size=max(28, width // 40), fill="#1c2429")
+            layers.append({**label, **layout})
+    if task["concept_only"]:
+        band = max(80, height // 12)
+        draw.rectangle((0, height - band, width, height), fill="#f1d7ab")
+        text = "CONCEPT ONLY - NOT A PRODUCT PHOTO"
+        layout = _draw_text(
+            draw,
+            text,
+            (32, height - band + 16, width - 64, band - 20),
+            size=max(26, width // 42),
+            fill="#442b13",
+        )
+        layers.append({"text": text, "kind": "concept_watermark", "fact_ids": [], **layout})
+    return _export(canvas), layers

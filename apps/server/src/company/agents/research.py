@@ -43,7 +43,7 @@ def observed_price_range(evidence: list[dict[str, Any]]) -> ObservedPriceRange |
     observations = []
     for item in evidence:
         # No currency conversion or comparability assertion is invented here.
-        if item.get("currency", "").upper() != "USD" or item.get("price") is None:
+        if str(item.get("currency") or "").upper() != "USD" or item.get("price") is None:
             continue
         try:
             price = Decimal(str(item["price"]))
@@ -74,6 +74,7 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
         "seller_requirements": context.get("seller_requirements"),
         "reference_images": context.get("reference_images", []),
         "initial_analysis": context.get("initial_analysis"),
+        "fact_precedence": context.get("fact_precedence"),
         "confirmed_facts": [fact.model_dump() for fact in facts],
         "evidence": evidence,
         "program_observed_price_range": price_range.model_dump() if price_range else None,
@@ -127,7 +128,13 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
         pricing_notes=(
             "仅为已提供 USD 竞品观察的价格范围；需核对规格可比性、日期、成本及卖家最终售价。"
             if price_range
-            else "缺少可用的 USD 价格证据，无法形成可靠价格区间；请补充带来源的竞品观察。"
+            else (
+                f"AI 试售价估算：USD {draft.estimated_trial_price.usd}。"
+                f"假设依据：{draft.estimated_trial_price.rationale}。"
+                "非竞品报价或市场事实；请核算采购、运费、平台费用与利润后确认售价。"
+                if draft.estimated_trial_price
+                else "待负责人填写试售价并核算成本。"
+            )
         ),
         usage=dict(call.usage),
         model=call.model,

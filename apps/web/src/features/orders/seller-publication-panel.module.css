@@ -32,3 +32,7 @@
 .warning { margin-top: 12px; }
 .warning button { display: block; margin-top: 8px; }
 @media(max-width: 600px) { .priceFields { gap: 10px; } .facts { padding: 13px 10px; } .form>label,.priceFields label { font-size: 11px; } }
+.confirmationFooter { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; } .confirmationFooter>span { margin-left:auto; text-align:right; color:#718d54; font-size:12px; padding-bottom:4px; }
+.confirmationFooter { padding-top:14px; border-top:1px solid #e1e6dc; }
+.confirmationFooter>span { padding:7px 12px; border-radius:20px; background:#edf3e4; color:#48613b; font-weight:600; }
+.form h3 { font-size:17px; font-weight:600; color:#2c4434; }

@@ -1,0 +1,24 @@
+.panel { color:#39413e; }
+.panel :global(.field-help) { color:#737b76; font-size:13px; line-height:1.8; margin-bottom:16px; }
+.content { display:grid; gap:18px; margin-top:24px; font-size:14px; line-height:1.85; color:#46504a; }
+.block { min-width:0; padding:22px 24px; border:1px solid #e0e6db; border-radius:14px; background:#fff; }
+.titleBlock { background:#f2f6ec; border-color:#d5e0c8; }
+.block h3 { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:0 0 18px; color:#304636; font-size:15px; font-weight:650; }
+.block h3>span { display:inline-flex; padding:4px 9px; border-radius:6px; background:#e7eedf; color:#536b43; font-size:10px; letter-spacing:.06em; font-weight:600; }
+.productTitle { margin:0; color:#263d2e; font-size:25px; font-weight:600; line-height:1.5; }
+.block ol { padding-left:24px; display:grid; gap:12px; margin:0; }
+.block li { padding-left:6px; }
+.block li::marker { color:#597349; font-size:12px; font-weight:650; }
+.description { margin:0; white-space:pre-wrap; }
+.faqList { display:grid; gap:12px; }
+.faqItem { background:#f8f9f5; border:1px solid #e8ece3; border-radius:10px; padding:18px; }
+.question,.answer { display:flex; align-items:flex-start; gap:12px; }
+.question { margin-bottom:10px; }
+.question>span,.answer>span { display:grid; place-items:center; flex:0 0 26px; height:26px; border-radius:7px; font-size:12px; font-weight:650; line-height:1; }
+.question>span { background:#354f3b; color:#fff; }
+.answer>span { background:#e8eee1; color:#59704c; }
+.question h4 { margin:0; color:#304736; font-size:15px; font-weight:600; line-height:1.7; }
+.answer p { margin:0; color:#59665c; font-size:14px; line-height:1.85; }
+.content > button { justify-self:start; }
+.content summary { cursor:pointer; color:#64766a; font-size:13px; }
+@media(max-width:600px) { .block { padding:18px 16px; } .productTitle { font-size:21px; } .faqItem { padding:14px; } }

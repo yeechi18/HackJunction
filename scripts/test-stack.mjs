@@ -2,7 +2,7 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, rm, symlink, unlink } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rm, symlink, unlink } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +12,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const windows = process.platform === 'win32';
 const python = path.join(root, 'apps/server/.venv', windows ? 'Scripts/python.exe' : 'bin/python');
 const webSource = path.join(root, 'apps/web');
+// Next's webpack development entries cannot cross Windows drives through a junction.
+const temporaryRoot = windows ? path.join(root, 'var') : os.tmpdir();
 const nextCli = path.join(webSource, 'node_modules/next/dist/bin/next');
 const playwrightCli = path.join(webSource, 'node_modules/@playwright/test/cli.js');
 const owned = [];
@@ -98,6 +100,11 @@ async function cleanup() {
   stopping = (async () => {
     for (const child of [...owned].reverse()) await stop(child);
     if (temporary) {
+      const relative = path.relative(temporaryRoot, path.resolve(temporary));
+      if (!relative || relative.startsWith('..') || path.isAbsolute(relative)
+          || !path.basename(temporary).startsWith('hackjunction-e2e-')) {
+        throw new Error('Refusing to clean an unexpected temporary test directory.');
+      }
       // Unlink the dependency junction first, so recursive cleanup cannot touch the source tree.
       await unlink(path.join(temporary, 'web/node_modules')).catch(() => {});
       await rm(temporary, { recursive: true, force: true });
@@ -137,7 +144,8 @@ try {
     const ownerHash = await captured(python, ['-c',
       "import os; from pwdlib import PasswordHash; print(PasswordHash.recommended().hash(os.environ['STACK_OWNER_PASSWORD']))"],
       { ...testEnvironment, STACK_OWNER_PASSWORD: password }, 'Temporary owner setup');
-    temporary = await mkdtemp(path.join(os.tmpdir(), 'hackjunction-e2e-'));
+    await mkdir(temporaryRoot, { recursive: true });
+    temporary = await mkdtemp(path.join(temporaryRoot, 'hackjunction-e2e-'));
     const isolatedWeb = path.join(temporary, 'web');
     const excluded = new Set(['node_modules', '.next', 'test-results', 'playwright-report']);
     await cp(webSource, isolatedWeb, {
