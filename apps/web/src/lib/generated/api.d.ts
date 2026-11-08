@@ -259,6 +259,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/internal/orders/agent-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agent Runs */
+        get: operations["list_agent_runs_api_v1_internal_orders_agent_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/internal/orders/{order_id}": {
         parameters: {
             query?: never;
@@ -1588,6 +1605,46 @@ export interface components {
              */
             created_at: string;
         };
+        /** OperationsRun */
+        OperationsRun: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Order Id
+             * Format: uuid
+             */
+            order_id: string;
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
+            /** Model */
+            model: string | null;
+            /** Usage */
+            usage: {
+                [key: string]: unknown;
+            };
+            /** Elapsed Seconds */
+            elapsed_seconds: number | null;
+            /** Error Summary */
+            error_summary: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Step */
+            step?: string | null;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** OrderMetrics */
         OrderMetrics: {
             /**
@@ -2593,6 +2650,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalOrderList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_agent_runs_api_v1_internal_orders_agent_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                include_trace?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsRun"][];
                 };
             };
             /** @description Validation Error */

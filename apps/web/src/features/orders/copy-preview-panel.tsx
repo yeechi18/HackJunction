@@ -58,11 +58,12 @@ export function CopyPreviewPanel({ order, csrfToken, refresh }: { order: Order; 
     finally { setBusy(false); }
   }
   const draft = preview?.draft;
+  const confirmedVolume = order.facts.find(f => f.key === "net_volume" && f.confirmed && f.value && f.unit);
   const brandMissing = brand?.facts.some(f => !order.facts.some(item => item.key === f.key));
   return <section className="surface workspace-panel" aria-label="英文文案草稿">
     <div className="panel-heading"><h2>先看看英文草稿</h2><span>未审核 · 非正式交付</span></div>
     <p className="field-help">打开待补资料订单后，自动用已有信息生成本版标题、五点、详情和 FAQ；未知参数留空。补齐必要信息并通过审校、负责人批准后，才会成为正式交付包。</p>
-    {brand && <div className="form-notice"><strong>已识别品牌：{brand.brand}</strong><p>可补入：{brand.facts.map(f => `${factLabels[f.key] ?? f.key}：${f.value}`).join("；")}。</p><p>官网有 {brand.variant_options.join("、")} 等规格，本单容量待确认，不自动猜选。</p><p>{brand.sources.map((url, i) => <a href={url} key={url} target="_blank" rel="noreferrer">官方资料 {i + 1} ↗ </a>)}</p>{brandMissing && <button type="button" className="text-button" disabled={busy || Boolean(order.pending_command_id) || !["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE", "AWAITING_RELEASE"].includes(order.phase)} onClick={() => void applyBrand()}>补入品牌基础资料</button>}</div>}
+    {brand && <div className="form-notice"><strong>已识别品牌：{brand.brand}</strong><p>可补入：{brand.facts.map(f => `${factLabels[f.key] ?? f.key}：${f.value}`).join("；")}。</p><p>官网有 {brand.variant_options.join("、")} 等规格。{confirmedVolume ? `本单已确认 ${confirmedVolume.value} ${confirmedVolume.unit}，不按品牌规格替换。` : "本单容量待确认，不自动猜选。"}</p><p>{brand.sources.map((url, i) => <a href={url} key={url} target="_blank" rel="noreferrer">官方资料 {i + 1} ↗ </a>)}</p>{brandMissing && <button type="button" className="text-button" disabled={busy || Boolean(order.pending_command_id) || !["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE", "AWAITING_RELEASE"].includes(order.phase)} onClick={() => void applyBrand()}>补入品牌基础资料</button>}</div>}
     <button type="button" className="button button-dark button-small" disabled={busy || preview?.status === "running" || preview?.status === "succeeded"} onClick={() => void generate()}>{busy || preview?.status === "running" ? "正在生成草稿…" : preview?.status === "succeeded" ? "本版草稿已生成" : "生成英文草稿"}</button>
     {preview?.missing_fields.length ? <p className="field-help">正式交付前待确认：{preview.missing_fields.map(k => factLabels[k] ?? k).join("、")}。这些参数不会自动写入草稿。</p> : null}
     {preview?.status === "failed" && <p role="alert">{preview.message}</p>}

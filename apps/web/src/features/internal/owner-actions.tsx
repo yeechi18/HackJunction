@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { factLabels, type InternalOrder } from "@/features/orders/types";
 import styles from "./owner-actions.module.css";
+import { operationsHref } from "./operations-views";
 
 export function OwnerActions({ order }: { order: InternalOrder }) {
   const delivery = order.phase === "AWAITING_RELEASE";
@@ -16,7 +17,7 @@ export function OwnerActions({ order }: { order: InternalOrder }) {
       {failed && <a href="#model-budget" className="button button-dark button-small">查看用量授权与恢复 ↓</a>}
       {failed && <a href="#release-review" className="text-link">查看未通过的成品审校 ↓</a>}
       {delivery && <a href="#release-review" className="button button-dark button-small">查看放行审批 ↓</a>}
-      {accepting && <a href="#acceptance-review" className="button button-dark button-small">前往接单审批 ↓</a>}
+      {accepting && <Link href={operationsHref("approvals")} className="button button-dark button-small">前往接单审批 ↗</Link>}
       {missing.length > 0 && <Link href={`/o/${order.id}#delivery-facts`} className="button button-outline button-small">查看卖家待补资料 ↗</Link>}
       <a href="#research-integrations" className="text-link">研究资料与图片制作 ↓</a>
     </nav>

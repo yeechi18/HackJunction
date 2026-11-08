@@ -404,19 +404,25 @@ async def test_optional_attribute_omission_does_not_block_revision_or_revalidate
         await confirm(database, settings, order_id, old, revision=2)
 
 
-async def test_open_human_ticket_pauses_intake_before_any_model_call(bundle_context):
+async def test_open_human_ticket_pauses_chat_but_keeps_intake_review(bundle_context):
     settings, database, _, create = bundle_context
     order_id = await create()
     async with database.sessions() as session, session.begin():
         session.add(SupportTicket(order_id=order_id, requested_phase="INTAKE"))
     provider = FullProvider()
     assert await process_one_job(settings, provider=provider, order_id=order_id)
-    assert provider.calls == []
+    assert provider.calls == ["_IntakeDraft"]
     async with database.sessions() as session:
-        assert (await session.get(Order, order_id)).phase == "INTAKE"
+        assert (await session.get(Order, order_id)).phase == "AWAITING_ACCEPTANCE"
         command = await session.scalar(select(Command).where(Command.order_id == order_id))
         assert command.status == "applied"
-        assert await session.scalar(select(AgentRun).where(AgentRun.order_id == order_id)) is None
+        run = await session.scalar(select(AgentRun).where(AgentRun.order_id == order_id))
+        assert run.status == "succeeded" and run.usage["total_tokens"] == 15
+        assert not list(
+            await session.scalars(
+                select(Message).where(Message.order_id == order_id, Message.role == "assistant")
+            )
+        )
 
 
 async def test_inflight_intake_result_keeps_real_usage_but_suppresses_reply_after_handoff(
@@ -436,8 +442,8 @@ async def test_inflight_intake_result_keeps_real_usage_but_suppresses_reply_afte
     assert await process_one_job(settings, provider=provider, order_id=order_id)
     async with database.sessions() as session:
         run = await session.scalar(select(AgentRun).where(AgentRun.order_id == order_id))
-        assert run.status == "suppressed" and run.usage["total_tokens"] == 15
-        assert (await session.get(Order, order_id)).phase == "INTAKE"
+        assert run.status == "succeeded" and run.usage["total_tokens"] == 15
+        assert (await session.get(Order, order_id)).phase == "AWAITING_ACCEPTANCE"
         messages = list(
             await session.scalars(
                 select(Message).where(

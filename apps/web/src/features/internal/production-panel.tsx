@@ -17,6 +17,7 @@ type Version = Schema["VersionView"];
 type Research = Schema["ResearchView"];
 type Report = Schema["ReportView"];
 type Asset = Schema["AssetView"];
+type Publication = Schema["PublicationView"];
 type Props = { order: InternalOrder; csrfToken: string; refresh: () => void };
 
 function record(value: unknown): Record<string, unknown> {
@@ -96,6 +97,7 @@ function ReleaseGate({ order, version, latest, csrfToken, refresh, showLatest }:
 
 export function ProductionPanel({ order, csrfToken, refresh }: Props) {
   const [production, setProduction] = useState<Production | null>(null);
+  const [publication, setPublication] = useState<Publication | null>(null);
   const [selectedVersion, setSelectedVersion] = useState("");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -111,13 +113,14 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
     async function load() {
       let denied = false;
       try {
-        const [artifacts, observations, images] = await Promise.all([
+        const [artifacts, observations, images, publishing] = await Promise.all([
           apiFetch<Production>(`/internal/orders/${order.id}/production`, { signal: controller.signal }),
           apiFetch<{ items: Evidence[] }>(`/internal/orders/${order.id}/evidence`, { signal: controller.signal }),
           apiFetch<{ items: Asset[] }>(`/orders/${order.id}/assets`, { signal: controller.signal }),
+          apiFetch<Publication>(`/orders/${order.id}/publication`, { signal: controller.signal }),
         ]);
-        if (active) { setProduction(artifacts); setEvidence(observations.items); setAssets(images.items); setError(""); }
-      } catch (caught) { if (active) { setError(errorMessage(caught)); denied = caught instanceof ApiError && [401, 403].includes(caught.status ?? 0); if (denied) { setProduction(null); setEvidence([]); setAssets([]); } } }
+        if (active) { setProduction(artifacts); setPublication(publishing); setEvidence(observations.items); setAssets(images.items); setError(""); }
+      } catch (caught) { if (active) { setError(errorMessage(caught)); denied = caught instanceof ApiError && [401, 403].includes(caught.status ?? 0); if (denied) { setProduction(null); setPublication(null); setEvidence([]); setAssets([]); } } }
       finally { if (active && !denied) timer = setTimeout(() => void load(), delay); }
     }
     void load();
@@ -129,6 +132,12 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
     <div className={styles.sectionHeading}><h3>研究包</h3><span>{production?.research.length ?? 0} 份</span></div>{production?.research.length ? production.research.map(item => <ResearchCard research={item} key={item.id} />) : <p className={styles.empty}>负责人批准接单后，研究Agent会自动生成研究包；初审与文案方向已在上方展示。</p>}
     <div className={styles.sectionHeading}><h3>版本、声明与审校</h3><span>{production?.versions.length ?? 0} 个版本</span></div>{production ? <VersionPanel production={production} selected={selectedVersion} onSelect={setSelectedVersion} assets={assets} /> : <p className={styles.empty}>正在读取内部产物…</p>}
     {latestVersion && viewedVersion && <ReleaseGate order={order} version={viewedVersion} latest={latestVersion} showLatest={() => setSelectedVersion("")} csrfToken={csrfToken} refresh={() => { setRevision(value => value + 1); refresh(); }} />}
+    {publication && <div className={styles.run}>
+      <div><strong>定价与上架</strong><span>{publication.status === "SIMULATED" ? "模拟上架完成" : publication.attempt ? publication.status : "等待上架"}</span></div>
+      {publication.confirmation && <p>卖家确认 {publication.confirmation.currency} {publication.confirmation.listing_price} · SKU {publication.confirmation.seller_sku}</p>}
+      {publication.notice && <p>{publication.notice}</p>}
+      {publication.listing_url && <a className="text-link" href={publication.listing_url}>查看商品页 ↗</a>}
+    </div>}
     <details className={styles.disclosure}><summary>生产运行记录 <span>{production?.runs.length ?? 0} 次 ＋</span></summary>{production?.runs.map(run => <div className={styles.run} key={run.id}><div><strong>{({ research: "研究", generation: "生成", review: "审校", images: "图片" } as Record<string, string>)[run.role] ?? run.role}</strong><span>{run.status} · 尝试 {run.attempts} 次</span></div><p>{run.model ?? "模型待记录"} · 资料版本 {run.input_revision} · Token {priceText(run.usage.total_tokens)} · {run.elapsed_seconds == null ? "耗时未记录" : `${run.elapsed_seconds.toFixed(2)}s`}</p>{run.error_summary && <p className={styles.error}>{run.error_summary}</p>}</div>)}</details>
   </section>;
 }
