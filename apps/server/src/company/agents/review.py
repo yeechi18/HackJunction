@@ -30,11 +30,11 @@ NUMBER_WORDS = {
 }
 NUMBER = r"\d+(?:\.\d+)?|" + "|".join(NUMBER_WORDS)
 COUNT_PATTERN = re.compile(
-    rf"\b({NUMBER})\s*[- ]?\s*(?:pack|pieces?|pcs|clips?|units?|count)\b"
+    rf"\b({NUMBER})\s*[- ]?\s*(?:pack|pieces?|pcs|clips?|units?|bottles?|count)\b"
     rf"|\b(?:pack|set)\s+of\s+({NUMBER})\b",
     re.I,
 )
-UNIT = r"mm|cm|inches|inch|in"
+UNIT = r"mm|cm|inches|inch|in|ml|l"
 MEASURE_PATTERN = re.compile(rf"\b(\d+(?:\.\d+)?)\s*({UNIT})\b", re.I)
 AXES_PATTERN = re.compile(rf"\b((?:\d+(?:\.\d+)?\s*[x×]\s*)+\d+(?:\.\d+)?)\s*({UNIT})\b", re.I)
 SENSITIVE_PATTERNS = {
@@ -235,6 +235,14 @@ async def review_listing(context: dict[str, Any], provider: MiMoProvider) -> Rev
         {key: raw[key] for key in ListingDraft.model_fields if key in raw}
     )
     program_issues = program_review(context, draft)
+    if context.get("image_paths") and len(context["image_paths"]) != len(draft.image_plan):
+        program_issues.append(
+            issue(
+                "image_plan",
+                "incomplete_images",
+                "图片计划与实际成品数量不一致，不能通过完整审校。",
+            )
+        )
     payload = {
         key: value
         for key, value in context.items()

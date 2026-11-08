@@ -87,7 +87,13 @@ class BundleProvider:
                         "layout": "Use the supplied reference.",
                         "text_overlay": "",
                         "fact_ids": ["fact:material"],
-                    }
+                    },
+                    {
+                        "purpose": "infographic",
+                        "layout": "Product details.",
+                        "text_overlay": "",
+                        "fact_ids": [],
+                    },
                 ],
             }
         elif schema.__name__ == "ReviewDraft":

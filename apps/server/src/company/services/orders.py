@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from company.config import Settings
+from company.domain.brands import known_brand, missing_delivery_fields, required_keys
 from company.domain.facts import canonical_key
 from company.domain.states import allowed_actions
 from company.persistence.agent_runs import AgentRun
@@ -27,7 +28,7 @@ from company.persistence.models import (
     SellerAccount,
     now,
 )
-from company.persistence.production import DeliverableVersion
+from company.persistence.production import DeliverableVersion, ProductionStepReceipt
 from company.schemas.commands import DecisionInput, QueuedCommand
 from company.schemas.orders import (
     CommandView,
@@ -83,6 +84,9 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
     from company.services.support import ai_reply_paused
 
     snapshot = await latest_snapshot(database, order.id)
+    missing_fields = missing_delivery_fields(order.product_name, snapshot.facts)
+    labels = {"pack_quantity": "包装数量", "net_volume": "单瓶净含量及单位", "use_cases": "用途"}
+    delivery_blockers = [f"正式交付前需确认：{labels.get(key, key)}" for key in missing_fields]
     active_job = await database.scalar(
         select(Job)
         .where(Job.order_id == order.id, Job.status.in_(["queued", "running"]))
@@ -90,8 +94,31 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         .limit(1)
     )
     failed_job = await database.scalar(
-        select(Job).where(Job.order_id == order.id, Job.status == "failed").limit(1)
+        select(Job)
+        .join(Command, Command.id == Job.command_id)
+        .where(
+            Job.order_id == order.id,
+            Job.status == "failed",
+            Command.expected_revision == order.revision,
+            Command.status == "failed",
+        )
+        .order_by(Job.created_at.desc())
+        .limit(1)
     )
+    workflow_error = None
+    if failed_job and not active_job:
+        failed_step = await database.scalar(
+            select(ProductionStepReceipt)
+            .where(
+                ProductionStepReceipt.command_id == failed_job.command_id,
+                ProductionStepReceipt.status == "failed",
+            )
+            .order_by(ProductionStepReceipt.created_at.desc())
+            .limit(1)
+        )
+        workflow_error = (
+            failed_step.error_summary if failed_step else "任务已中断，请负责人查看记录后授权恢复。"
+        )
     phase_status = {
         "INTAKE": "queued",
         "NEEDS_INFO": "waiting_for_seller",
@@ -107,7 +134,7 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         active_job.status
         if active_job
         else "failed"
-        if failed_job and order.phase == "INTAKE"
+        if failed_job
         else phase_status.get(order.phase, "processing")
     )
     actions = allowed_actions(
@@ -127,6 +154,12 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
             version.status == "review_passed" and version.text_passed and version.full_passed
         ):
             actions = [action for action in actions if action != "release"]
+        if missing_fields or (
+            version and len(version.assets) != len(version.draft.get("image_plan", []))
+        ):
+            actions = [action for action in actions if action != "release"]
+        if version and len(version.assets) != len(version.draft.get("image_plan", [])):
+            delivery_blockers.append("图片计划与实际图片数量不一致，需重新制作并审校。")
     if not internal and order.phase == "AWAITING_SELLER" and actions:
         from company.services.publication import PublicationError, current_delivery, feedback_base
 
@@ -170,6 +203,9 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         if order.seller_account_id
         else "未关联账号",
         product_name=order.product_name,
+        required_fact_keys=list(required_keys({"product_name": order.product_name})),
+        missing_delivery_fields=missing_fields,
+        delivery_blockers=delivery_blockers,
         product_details=order.product_details,
         domestic_product_url=order.domestic_product_url,
         facts=snapshot.facts,
@@ -182,6 +218,7 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         pending_command_id=order.pending_command_id,
         conflicting_fact_keys=conflicts(snapshot.facts),
         workflow_status=workflow_status,
+        workflow_error=workflow_error,
         allowed_actions=actions,
         ai_reply_paused=await ai_reply_paused(database, order.id),
     )
@@ -284,13 +321,19 @@ async def create_order(
     )
     database.add(order)
     await database.flush()
+    saved_facts = [fact.model_dump() for fact in body.facts]
+    profile = known_brand(body.product_name)
+    if profile:
+        for fact in profile["facts"]:
+            if not any(f["key"] == fact["key"] for f in saved_facts):
+                saved_facts.append(fact)
     token = secrets.token_urlsafe(32)
     database.add_all(
         [
             InputSnapshot(
                 order_id=order.id,
                 revision=1,
-                facts=[fact.model_dump() for fact in body.facts],
+                facts=saved_facts,
                 notes=body.notes,
                 source="seller_form",
             ),
@@ -336,6 +379,8 @@ async def add_supplement(
 ) -> OrderSummary:
     order = await load_order(database, order_id, lock=True)
     check_edit(order, body.expected_revision, "supplement")
+    if order.phase == "AWAITING_RELEASE":
+        order.phase = "INTAKE"
     previous = await latest_snapshot(database, order_id)
     # A seller explicitly submits a COMPLETE new snapshot. Older values remain
     # immutable in history; duplicate different values in this snapshot remain conflicts.
@@ -448,6 +493,15 @@ async def enqueue_decision(
             .limit(1)
         )
         snapshot = await latest_snapshot(database, order_id)
+        if body.action == "release":
+            if missing_delivery_fields(order.product_name, snapshot.facts):
+                raise HTTPException(
+                    409, "Required SKU facts must be confirmed before formal delivery."
+                )
+            if version and len(version.assets) != len(version.draft.get("image_plan", [])):
+                raise HTTPException(
+                    409, "Every planned image must exist and pass review before delivery."
+                )
         if (
             body.version_id is None
             or version is None

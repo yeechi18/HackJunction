@@ -1,4 +1,4 @@
-type ProgressOrder = { phase: string; workflow_status: string; pending_command_id: string | null; ai_reply_paused?: boolean };
+type ProgressOrder = { phase: string; workflow_status: string; workflow_error?: string | null; pending_command_id: string | null; ai_reply_paused?: boolean };
 
 export function pollIntervalFor(order: Pick<ProgressOrder, "workflow_status">): number {
   return ["queued", "running", "processing"].includes(order.workflow_status) ? 2000 : 5000;
@@ -24,7 +24,7 @@ export function workflowProgress(order: ProgressOrder): { title: string; descrip
       ? { title: "候选版本等待负责人核对", description: "负责人将核对文案、图片与审校记录。放行后，成品才会出现在卖家的交付包中。", tone: "waiting" }
       : { title: "资料审查通过，等待负责人接单", description: "负责人将查看本版资料并决定是否接单，结果会在这里更新。", tone: "waiting" };
     case "research_pending": return { title: "已批准接单，等待开展研究", description: "下一步根据卖家确认的商品事实与已保存证据开展商品和市场研究。", tone: "waiting" };
-    case "failed": return { title: `${task}遇到问题`, description: "当前处理暂时中断，需要负责人检查运行记录并处理后恢复。已保存的资料与消息仍然保留。", tone: "failed" };
+    case "failed": return { title: `${task}已暂停`, description: order.workflow_error ? `上次中断原因：${order.workflow_error}` : "当前处理已中断，请负责人检查运行记录后授权恢复。", tone: "failed" };
     case "finished": return order.phase === "REJECTED"
       ? { title: "负责人未接单，订单已结束", description: "本单资料与沟通记录已保留，供你查看。", tone: "finished" }
       : { title: "订单处理已结束", description: "请查看本单的最新动态与已保存记录。", tone: "finished" };

@@ -1,5 +1,6 @@
 """Research contracts. Prices are observations from supplied evidence, never live scraping."""
 
+import re
 from decimal import Decimal
 from typing import Literal
 
@@ -41,7 +42,26 @@ class SellingPointPlan(BaseModel):
     strategy: Literal["use_confirmed_fact", "style_only", "needs_confirmation"]
     explanation: str = Field(min_length=1, max_length=1500)
     fact_ids: list[str] = Field(default_factory=list, max_length=20)
-    target_fields: list[str] = Field(default_factory=list, max_length=10)
+    target_fields: list[Literal["title", "bullets", "description", "faqs", "image_plan"]] = Field(
+        default_factory=list, max_length=10
+    )
+
+    @field_validator("target_fields", mode="before")
+    @classmethod
+    def normalize_target_paths(cls, value):
+        if not isinstance(value, list):
+            return value
+        normalized = []
+        for target in value:
+            if isinstance(target, str):
+                match = re.fullmatch(
+                    r"(title|bullets|description|faqs|image_plan)(?:\[\d+\]|\.\d+)?(?:\.(?:question|answer|text_overlay|layout))?",
+                    target.strip(),
+                )
+                target = match[1] if match else target
+            if target not in normalized:
+                normalized.append(target)
+        return normalized
 
 
 class ResearchDraft(BaseModel):

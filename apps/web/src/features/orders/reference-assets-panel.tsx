@@ -11,7 +11,7 @@ type AssetView = components["schemas"]["AssetView"];
 
 type Props = { orderId: string; csrfToken: string; internal?: boolean };
 const kindLabels: Record<string, string> = {
-  reference: "商品参考图",
+  reference: "商品参考图", reference_edit: "已核对的参考编辑图", concept: "生成图预览（未核实，不交付）",
   main_candidate: "主图候选",
   infographic: "商品信息附图",
 };

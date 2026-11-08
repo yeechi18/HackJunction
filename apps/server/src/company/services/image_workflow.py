@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from company.config import Settings
@@ -107,7 +107,17 @@ async def render_version_images(
         )
         if snapshot is None:
             raise ImageWorkflowError("The candidate no longer matches current product facts.")
-        query = select(Asset).where(Asset.order_id == order_id, Asset.kind == "reference")
+        query = select(Asset).where(
+            Asset.order_id == order_id,
+            or_(
+                Asset.kind == "reference",
+                and_(
+                    Asset.kind == "reference_edit",
+                    Asset.image_metadata["revision"].as_integer() == order.revision,
+                    Asset.image_metadata["owner_verified"].as_boolean().is_(True),
+                ),
+            ),
+        )
         if reference_asset_id is not None:
             query = query.where(Asset.id == reference_asset_id)
         reference = await session.scalar(query.order_by(Asset.created_at.desc(), Asset.id).limit(1))
@@ -288,7 +298,7 @@ async def queue_image_resume(session: AsyncSession, order_id: UUID, asset_id: UU
             or version.status in {"vetoed", "delivered"}
             or reference is None
             or reference.order_id != order_id
-            or reference.kind != "reference"
+            or reference.kind not in {"reference", "reference_edit"}
         ):
             return None
         key = f"system:images:{asset_id}"

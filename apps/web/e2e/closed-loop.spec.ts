@@ -73,13 +73,13 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     await expect(owner.getByRole("article", { name: "获客初审与文案方向" })).toBeVisible();
     await owner.getByRole("button", { name: "提交接单批准", exact: true }).click();
     await expect.poll(() => phase(owner, order.id), { timeout: 30000 }).toBe("AWAITING_RELEASE");
-    await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
+    await expect(owner.getByRole("button", { name: "同意放行并交付", exact: true })).toBeEnabled();
     const beforeRelease = await seller.request.get(`/api/v1/orders/${order.id}/deliverables`);
     expect((await beforeRelease.json()).items).toHaveLength(0);
     expect((await seller.request.get(`/api/v1/orders/${order.id}/download`)).status()).toBe(404);
 
-    await owner.getByLabel("否决原因", { exact: true }).fill("演示返修：保持全部事实，让文案更简洁。");
-    await owner.getByRole("button", { name: "否决本版", exact: true }).click();
+    await owner.getByLabel("退回修改原因（只有退回时填写）", { exact: true }).fill("演示返修：保持全部事实，让文案更简洁。");
+    await owner.getByRole("button", { name: "退回修改本版", exact: true }).click();
     await expect.poll(async () => {
       const result = await owner.request.get(`/api/v1/internal/orders/${order.id}/production`);
       const value = await result.json();
@@ -92,12 +92,12 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     const versionSelector = owner.getByLabel("查看版本", { exact: false });
     await versionSelector.selectOption(producedVersions[producedVersions.length - 1].id);
     await expect.poll(async () => {
-      const action = owner.getByRole("button", { name: "本版放行并交付", exact: true });
+      const action = owner.getByRole("button", { name: "同意放行并交付", exact: true });
       return await action.count() === 0 || !await action.isEnabled();
     }).toBe(true);
     await versionSelector.selectOption(producedVersions[0].id);
-    await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
-    await owner.getByRole("button", { name: "本版放行并交付", exact: true }).click();
+    await expect(owner.getByRole("button", { name: "同意放行并交付", exact: true })).toBeEnabled();
+    await owner.getByRole("button", { name: "同意放行并交付", exact: true }).click();
     await expect.poll(() => phase(seller, order.id)).toBe("AWAITING_SELLER");
     const downloadLink = seller.getByRole("link", { name: "下载本版 ZIP", exact: true }).first();
     await expect(downloadLink).toBeVisible();
@@ -120,8 +120,8 @@ test("双角色页面跑通审核交付、反馈返修、模拟发布及人工�
     const updatedProduction = await owner.request.get(`/api/v1/internal/orders/${order.id}/production`);
     await versionSelector.selectOption((await updatedProduction.json()).versions[0].id);
     await expect(owner.getByRole("heading", { name: "当前最新候选 · v3", exact: true })).toBeVisible();
-    await expect(owner.getByRole("button", { name: "本版放行并交付", exact: true })).toBeEnabled();
-    await owner.getByRole("button", { name: "本版放行并交付", exact: true }).click();
+    await expect(owner.getByRole("button", { name: "同意放行并交付", exact: true })).toBeEnabled();
+    await owner.getByRole("button", { name: "同意放行并交付", exact: true }).click();
     await expect.poll(() => phase(seller, order.id)).toBe("AWAITING_SELLER");
     const deliveredResponse = await seller.request.get(`/api/v1/orders/${order.id}/deliverables`);
     const deliveredVersions: BrowserDelivery[] = (await deliveredResponse.json()).items;

@@ -1,4 +1,6 @@
 "use client";
+import { CopyPreviewPanel } from "./copy-preview-panel";
+import { DeliveryFactsPanel } from "./delivery-facts-panel";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AccessError, ErrorNotice, LoadingPanel } from "@/components/async-feedback";
@@ -166,6 +168,8 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
             <div className={`${styles.syncFooter} workspace-toolbar`}><span>最近检查 {checkedAt} · 每 {pollIntervalMs / 1000} 秒同步</span><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>
           </div>
         </section>
+        <CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} />
+        <DeliveryFactsPanel key={order.revision} order={order} csrfToken={csrfToken} refresh={refresh} />
         <DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} />
         <SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} />
         <SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} />

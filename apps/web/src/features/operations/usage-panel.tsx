@@ -23,7 +23,7 @@ type Metrics = {
 type Command = { id: string; kind: string; status: string; expected_revision: number; created_at: string };
 type OrderState = { revision: number; phase: string; pending_command_id: string | null; commands: Command[] };
 
-const roleLabels: Record<string, string> = { acquisition: "获客整理", acquisition_feedback: "反馈整理", research: "商品调研", generation: "文案生成", review: "图文审校", publishing: "发布准备" };
+const roleLabels: Record<string, string> = { copy_preview: "英文初稿", acquisition: "获客整理", acquisition_feedback: "反馈整理", research: "商品调研", generation: "文案生成", review: "图文审校", publishing: "发布准备" };
 const commandLabels: Record<string, string> = { START: "首次资料审查", MESSAGE: "资料重审", SUPPLEMENT: "补充资料审查", ACCEPT: "接单与生产", PRODUCE: "商品生产", IMAGES: "图片制作与审校", FEEDBACK: "反馈修改", VETO: "否决后返修", RELEASE: "成品交付", CONFIRM_PUBLISH: "确认后发布" };
 
 function amount(value: string | number | null): string {
@@ -70,7 +70,7 @@ function UsageWorkspace({ orderId, csrfToken, refresh }: OperationsPanelProps) {
   }, [base, revision]);
 
   const failed = order && !order.pending_command_id && !["COMPLETED", "REJECTED"].includes(order.phase)
-    ? order.commands.filter(command => command.status === "failed" && command.expected_revision === order.revision) : [];
+    ? order.commands.filter(command => command.kind !== "COPY_PREVIEW" && command.status === "failed" && command.expected_revision === order.revision) : [];
   const currentCommand = failed.find(command => command.id === selectedCommand) ?? failed[failed.length - 1];
 
   async function retry(event: FormEvent<HTMLFormElement>) {

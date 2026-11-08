@@ -64,6 +64,8 @@
 .releaseGate { margin-top:24px; padding:18px; border:1px solid #d7e2c9; background:#f3f7ec; }
 .releaseGate>.note { margin:12px 0 17px; }
 .gateActions { display:flex; gap:12px; flex-wrap:wrap; margin-top:17px; }
+.gateActions button:disabled { opacity:1; color:#59634e; background:#e3e8dc; border-color:#b9c4ac; cursor:not-allowed; }
+.releaseGate { scroll-margin-top:24px; }
 .releaseGate .warning button { display:block; margin-top:8px; }
 .versionImages { border-top:1px solid #e4ebda; padding-top:17px; margin-top:22px; }
 .versionImages h4 { font-size:11px; color:#81986b; font-weight:500; margin-bottom:13px; }

@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from company.config import Settings
+from company.domain.brands import missing_delivery_fields
 from company.persistence.assets import Asset
 from company.persistence.database import Database
 from company.persistence.deliveries import DeliverySnapshot
@@ -189,6 +190,10 @@ async def _prepare(
         )
     if version.status != "review_passed" or not version.full_passed or not version.text_passed:
         raise DeliveryError("Complete text and image review must pass before release.")
+    if missing_delivery_fields(order.product_name, snapshot.facts):
+        raise DeliveryError("必要商品规格尚未确认，草稿不能作为正式交付。")
+    if len(version.assets) != len(version.draft.get("image_plan", [])):
+        raise DeliveryError("图片计划与实际成品数量不一致，不能交付。")
     review = await session.scalar(
         select(ReviewReport)
         .where(ReviewReport.order_id == order_id, ReviewReport.version_id == version_id)

@@ -95,11 +95,27 @@ class WorkflowContext:
             BudgetedProvider(provider, database, settings, lease.order_id) if provider else None
         )
         self.owns_provider = provider is None
+        self.research_model = None
         self.include_production = include_production
         self.include_images = include_images
         self.publisher = publisher
 
     def _provider(self, role=None, step_key=None):
+        if (
+            role == "research"
+            and self.owns_provider
+            and self.settings.app_env != "test"
+            and self.settings.mimo_mode == "live"
+            and self.settings.research_provider == "ark"
+        ):
+            if self.research_model is None:
+                from company.providers.ark import ArkProvider
+
+                self.research_model = BudgetedProvider(
+                    ArkProvider(self.settings), self.database, self.settings, self.lease.order_id
+                )
+            self.research_model.last_call = None
+            return self.research_model
         if self.provider is None:
             self.provider = BudgetedProvider(
                 build_provider(self.settings), self.database, self.settings, self.lease.order_id
@@ -115,6 +131,8 @@ class WorkflowContext:
         return self.provider
 
     async def close(self) -> None:
+        if self.research_model is not None:
+            await self.research_model.close()
         if self.owns_provider and self.provider is not None:
             await self.provider.close()
 
@@ -580,7 +598,7 @@ class WorkflowContext:
         result = await research_step(
             self.lease.order_id,
             UUID(state["command_id"]),
-            self.provider,
+            self._provider("research", "research"),
             database=self.database,
             commit_guard=self._owned_job,
         )

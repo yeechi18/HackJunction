@@ -20,6 +20,7 @@ from company.agents.generation import generate_listing
 from company.agents.research import research_product
 from company.agents.review import review_listing
 from company.config import Settings, get_settings
+from company.domain.current_facts import resolve_current_facts
 from company.domain.facts import canonical_key
 from company.persistence.agent_runs import AgentRun
 from company.persistence.assets import Asset
@@ -467,9 +468,8 @@ async def prepare(
                 "parent_id": parent_id,
                 "image_hash": image_hash,
                 "prompt": prompt,
-                "model": getattr(
-                    getattr(provider, "settings", None), "mimo_model", "injected-provider"
-                ),
+                "model": getattr(unwrapped_provider(provider), "model_name", None)
+                or getattr(getattr(provider, "settings", None), "mimo_model", "injected-provider"),
             }
         )
         token = uuid4()
@@ -707,6 +707,7 @@ async def execute_step(
         result = None
         provider.last_call = None
         try:
+            current_context = resolve_current_facts(prepared.context)
             traced_provider = unwrapped_provider(provider)
             if hasattr(traced_provider, "trace_context"):
                 traced_provider.trace_context = {
@@ -716,11 +717,11 @@ async def execute_step(
                     "step_key": step_key,
                 }
             if role == "research":
-                result = await research_product(prepared.context, provider)
+                result = await research_product(current_context, provider)
             elif role == "generation":
-                result = await generate_listing(prepared.context, provider)
+                result = await generate_listing(current_context, provider)
             else:
-                context = {**prepared.context, "image_paths": image_paths or []}
+                context = {**current_context, "image_paths": image_paths or []}
                 result = await review_listing(context, provider)
                 if (
                     digest(await asyncio.to_thread(image_dependencies, image_paths or []))

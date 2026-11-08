@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { CopyPreviewPanel } from "@/features/orders/copy-preview-panel";
+import { IntegrationsPanel } from "./integrations-panel";
 import { useRef, useState } from "react";
 import { AccessError, ErrorNotice, LoadingPanel } from "@/components/async-feedback";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
@@ -8,6 +10,8 @@ import { EventsPanel, FactsPanel, MessagesPanel, OrderHeading, WorkflowNotice } 
 import { factLabels, formatTime, type DecisionCommand, type InternalOrder } from "@/features/orders/types";
 import { useWorkspace } from "@/features/orders/use-workspace";
 import { LogoutButton } from "./auth";
+import { OwnerActions } from "./owner-actions";
+import { ModelBudgetPanel } from "./model-budget-panel";
 import { AgentRunsPanel } from "./agent-runs-panel";
 import { ProductionPanel } from "./production-panel";
 import { ReferenceAssetsPanel } from "@/features/orders/reference-assets-panel";
@@ -49,7 +53,7 @@ function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOrder; cs
     finally { setBusy(false); }
   }
 
-  return <section className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>负责人决定</h2><span>初审后由负责人决定接单</span></div>
+  return <section id="acceptance-review" style={{ scrollMarginTop: 24 }} className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>负责人决定</h2><span>初审后由负责人决定接单</span></div>
     {submittedMessage && <p className="decision-command-status" role="status">{submittedMessage}</p>}
     {(["INTAKE", "NEEDS_INFO", "AWAITING_ACCEPTANCE"].includes(order.phase)) && !pendingSubmission ? <><p className="field-help">{canAccept ? "初审已整理，可结合资料、图片和文案方向决定是否接单。" : "正在整理初审意见，完成后即可批准或拒绝接单；无需等待固定商品参数齐全。"}</p><div className="decision-actions">{<button className="button button-dark" type="button" disabled={busy || !canAccept} onClick={() => decide("accept")}>{busy ? "提交中…" : "提交接单批准"}</button>}{<button className="button button-outline danger-text" type="button" disabled={busy || !canReject} onClick={() => decide("reject")}>提交拒绝接单</button>}</div></> : !submittedMessage && <p className="field-help">{order.pending_command_id ? "已有决定等待工作流处理，当前不可重复审批。" : order.phase === "RESEARCH" ? "已批准接单，Agent将自动开展研究与内容制作。" : order.phase === "REJECTED" ? "本单已拒绝接单。" : "当前没有可执行的接单动作，请查看实际订单进度。"}</p>}
     {pendingSubmission && <p className="command-queued">已入队 · 等待实际处理结果</p>}
@@ -62,7 +66,7 @@ function HistoryPanel({ order }: { order: InternalOrder }) {
 }
 
 function CommandsPanel({ order }: { order: InternalOrder }) {
-  return <section className="surface workspace-panel"><div className="panel-heading"><h2>操作命令</h2><span>{order.commands.length} 条</span></div>{order.commands.length ? <ol className="command-list">{order.commands.map(command => <li key={command.id}><div><strong>{({ START: "首次资料审查", MESSAGE: "消息后重审", SUPPLEMENT: "补充后重审", ACCEPT: "接单批准", REJECT: "拒绝接单", accept: "接单批准", reject: "拒绝接单", intake: "资料审查", supplement: "补充后重审" } as Record<string, string>)[command.kind] ?? command.kind}</strong><span>{({ queued: "等待处理", pending: "等待处理", running: "处理中", completed: "已处理", applied: "已生效", stale: "已过期", cancelled: "已取消", failed: "处理失败" } as Record<string, string>)[command.status] ?? command.status}</span></div><p>基于版本 {command.expected_revision} · {formatTime(command.created_at)}</p></li>)}</ol> : <p className="panel-empty">暂无操作命令。</p>}</section>;
+  return <section className="surface workspace-panel"><div className="panel-heading"><h2>操作命令</h2><span>{order.commands.length} 条</span></div>{order.commands.length ? <ol className="command-list">{order.commands.map(command => <li key={command.id}><div><strong>{({ COPY_PREVIEW: "英文初稿", START: "首次资料审查", MESSAGE: "消息后重审", SUPPLEMENT: "补充后重审", ACCEPT: "接单批准", REJECT: "拒绝接单", accept: "接单批准", reject: "拒绝接单", intake: "资料审查", supplement: "补充后重审" } as Record<string, string>)[command.kind] ?? command.kind}</strong><span>{({ queued: "等待处理", pending: "等待处理", running: "处理中", completed: "已处理", applied: "已生效", stale: "已过期", cancelled: "已取消", failed: "处理失败" } as Record<string, string>)[command.status] ?? command.status}</span></div><p>基于版本 {command.expected_revision} · {formatTime(command.created_at)}</p></li>)}</ol> : <p className="panel-empty">暂无操作命令。</p>}</section>;
 }
 
 export function InternalOrderWorkspace({ orderId }: { orderId: string }) {
@@ -71,5 +75,5 @@ export function InternalOrderWorkspace({ orderId }: { orderId: string }) {
   if (!data) return error ? <div><ErrorNotice>{error}</ErrorNotice><button className="button button-outline" type="button" onClick={refresh}>重新连接</button></div> : <LoadingPanel message="正在读取订单与内部记录…" />;
   const { order, messages, events, csrfToken, checkedAt } = data;
 
-  return <><div className="workspace-toplinks"><Link href="/internal/orders" className="text-link">← 返回订单列表</Link><LogoutButton csrfToken={csrfToken} /></div><OrderHeading order={order} internal /><div className="workspace-toolbar"><p>最近更新 {checkedAt} · 每 {pollIntervalMs / 1000} 秒刷新</p><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>{error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}<WorkflowNotice order={order} /><div className="workspace-grid"><div className="workspace-primary"><section className="surface workspace-panel"><div className="panel-heading"><h2>卖家信息</h2><span>仅内部可见</span></div><dl className="seller-details"><div><dt>称呼</dt><dd>{order.seller_name}</dd></div><div><dt>联系方式</dt><dd>{order.contact || "未填写"}</dd></div><div><dt>提交时间</dt><dd>{formatTime(order.created_at)}</dd></div></dl></section><FactsPanel order={order} /><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} internal /><ProductionPanel order={order} csrfToken={csrfToken} refresh={refresh} /><MessagesPanel messages={messages} /><OwnerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><AgentRunsPanel runs={order.agent_runs ?? []} /><HistoryPanel order={order} /></div><aside className="workspace-secondary"><DecisionPanel order={order} csrfToken={csrfToken} refresh={refresh} /><EventsPanel events={events} /><CommandsPanel order={order} /><OwnerUsagePanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><div className="workspace-side-note"><strong>每次决定都有记录</strong><p>决定仅对当前资料版本生效。命令入队后，订单会等待真实工作流处理。</p></div></aside></div></>;
+  return <><div className="workspace-toplinks"><Link href="/internal/orders" className="text-link">← 返回订单列表</Link><LogoutButton csrfToken={csrfToken} /></div><OrderHeading order={order} internal /><div className="workspace-toolbar"><p>最近更新 {checkedAt} · 每 {pollIntervalMs / 1000} 秒刷新</p><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>{error && <ErrorNotice>{error} 当前仍显示最近一次成功读取的资料。</ErrorNotice>}<WorkflowNotice order={order} /><OwnerActions order={order} /><div className="workspace-grid"><div className="workspace-primary"><section className="surface workspace-panel"><div className="panel-heading"><h2>卖家信息</h2><span>仅内部可见</span></div><dl className="seller-details"><div><dt>称呼</dt><dd>{order.seller_name}</dd></div><div><dt>联系方式</dt><dd>{order.contact || "未填写"}</dd></div><div><dt>提交时间</dt><dd>{formatTime(order.created_at)}</dd></div></dl></section><CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} /><FactsPanel order={order} /><IntegrationsPanel order={order} csrfToken={csrfToken} refresh={refresh} /><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} internal /><ProductionPanel order={order} csrfToken={csrfToken} refresh={refresh} /><MessagesPanel messages={messages} /><OwnerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><AgentRunsPanel runs={order.agent_runs ?? []} /><HistoryPanel order={order} /></div><aside className="workspace-secondary"><DecisionPanel order={order} csrfToken={csrfToken} refresh={refresh} /><EventsPanel events={events} /><CommandsPanel order={order} /><ModelBudgetPanel order={order} csrfToken={csrfToken} refresh={refresh} /><OwnerUsagePanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /><div className="workspace-side-note"><strong>每次决定都有记录</strong><p>决定仅对当前资料版本生效。命令入队后，订单会等待真实工作流处理。</p></div></aside></div></>;
 }

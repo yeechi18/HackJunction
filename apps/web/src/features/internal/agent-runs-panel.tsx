@@ -1,10 +1,10 @@
 import { factLabels, formatTime, type AgentRun } from "@/features/orders/types";
 
 const roleLabels: Record<string, string> = {
-  acquisition: "获客 Agent", research: "研究 Agent", generation: "生成 Agent", review: "审校 Agent", publishing: "上架 Agent",
+  copy_preview: "生成 Agent · 英文初稿", acquisition: "获客 Agent", research: "研究 Agent", generation: "生成 Agent", review: "审校 Agent", publishing: "上架 Agent",
 };
 const statusLabels: Record<string, string> = {
-  queued: "等待执行", running: "运行中", succeeded: "已完成", failed: "失败", stale: "结果已过期",
+  needs_review: "待核对", queued: "等待执行", running: "运行中", succeeded: "已完成", failed: "失败", stale: "结果已过期",
 };
 
 function recordedNumber(value: number | undefined): string {

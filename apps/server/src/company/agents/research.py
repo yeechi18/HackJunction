@@ -43,7 +43,7 @@ def observed_price_range(evidence: list[dict[str, Any]]) -> ObservedPriceRange |
     observations = []
     for item in evidence:
         # No currency conversion or comparability assertion is invented here.
-        if item.get("currency", "").upper() != "USD" or item.get("price") is None:
+        if str(item.get("currency") or "").upper() != "USD" or item.get("price") is None:
             continue
         try:
             price = Decimal(str(item["price"]))
@@ -74,6 +74,7 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
         "seller_requirements": context.get("seller_requirements"),
         "reference_images": context.get("reference_images", []),
         "initial_analysis": context.get("initial_analysis"),
+        "fact_precedence": context.get("fact_precedence"),
         "confirmed_facts": [fact.model_dump() for fact in facts],
         "evidence": evidence,
         "program_observed_price_range": price_range.model_dump() if price_range else None,

@@ -154,6 +154,18 @@ def render_layouts(
         except ImageLayoutError:
             pass
     dimension_heading = "Dimensions"
+    volume = verified.get("net_volume")
+    if not dimensions and volume:
+        unit = volume.get("unit", "")
+        value = volume.get("value", "")
+        if (
+            re.fullmatch(r"\d+(?:\.\d+)?", value)
+            and float(value) > 0
+            and unit in {"mL", "ml", "L", "l"}
+        ):
+            dimensions = f"{value} {unit}"
+            dimension_ids = [volume["id"]]
+            dimension_heading = "Net volume (per bottle)"
     scope = verified.get("dimension_scope")
     if scope and dimensions:
         value = scope["value"].casefold()
@@ -176,7 +188,7 @@ def render_layouts(
     if quantity:
         labels.append(
             (
-                f"Pack includes: {quantity} pieces",
+                f"Pack includes: {quantity} {'bottles' if volume else 'pieces'}",
                 [verified["pack_quantity"]["id"]],
                 (80, 1060, 1440, 160),
             )

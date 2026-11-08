@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     mimo_base_url: str = "https://api.xiaomimimo.com/v1"
     mimo_model: str = "mimo-v2.6-pro"
     mimo_mode: Literal["live", "fake"] = "live"
+    brave_search_api_key: SecretStr | None = None
+    competitor_search_provider: Literal["mimo", "brave", "ark"] = "mimo"
+    competitor_search_enabled: bool = False
+    research_provider: Literal["mimo", "ark"] = "mimo"
+    ark_api_key: SecretStr | None = None
+    ark_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
+    ark_vision_model: str = "doubao-seed-2-0-mini-260428"
+    ark_research_model: str | None = None
+    ark_research_effort: Literal["low", "high", "max"] = "low"
     publish_mode: Literal["simulated", "sandbox", "production"] = "simulated"
     request_timeout_seconds: float = Field(default=60, gt=0, le=600)
     storage_backend: Literal["local"] = "local"

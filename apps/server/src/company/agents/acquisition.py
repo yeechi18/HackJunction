@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from company.domain.brands import known_brand
 from company.domain.facts import canonical_key
 from company.providers.mimo import MiMoProvider
 from company.schemas.intake import IntakeAnalysis, PageObservation, SourceFact
@@ -180,6 +181,7 @@ async def inspect_intake(
         **order_input,
         "facts": facts,
         "program_conflicts": [item.model_dump() for item in conflicts],
+        "reviewed_brand_profile": known_brand(str(order_input.get("product_name", ""))),
     }
     prompt = files("company").joinpath("prompts/acquisition.md").read_text(encoding="utf-8")
     content = [{"type": "text", "text": json.dumps(context, ensure_ascii=False)}]
