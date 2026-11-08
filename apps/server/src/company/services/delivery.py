@@ -171,7 +171,19 @@ async def _prepare(
         ):
             raise DeliveryError("This historical version was already delivered; refresh the order.")
         return existing
-    if order.phase != "AWAITING_RELEASE" or command.expected_revision != order.revision:
+    manual = command.payload.get("override_review") is True
+    acknowledgement = None
+    if manual:
+        from company.services.owner_release import verify_manual_release
+
+        acknowledgement = await verify_manual_release(
+            session, order_id, version_id, command.payload.get("review_token")
+        )
+        if not command.payload.get("owner_acknowledgement") or not command.payload.get("reason"):
+            raise DeliveryError("人工放行缺少问题确认记录或理由。")
+    if (
+        not manual and order.phase != "AWAITING_RELEASE"
+    ) or command.expected_revision != order.revision:
         raise DeliveryError("The order is not awaiting release for this input revision.")
     latest = await session.scalar(
         select(DeliverableVersion.id)
@@ -188,9 +200,11 @@ async def _prepare(
         raise DeliveryError(
             "Only the current version bound to current product inputs may be released."
         )
-    if version.status != "review_passed" or not version.full_passed or not version.text_passed:
+    if not manual and (
+        version.status != "review_passed" or not version.full_passed or not version.text_passed
+    ):
         raise DeliveryError("Complete text and image review must pass before release.")
-    if missing_delivery_fields(order.product_name, snapshot.facts):
+    if not manual and missing_delivery_fields(order.product_name, snapshot.facts):
         raise DeliveryError("必要商品规格尚未确认，草稿不能作为正式交付。")
     if len(version.assets) != len(version.draft.get("image_plan", [])):
         raise DeliveryError("图片计划与实际成品数量不一致，不能交付。")
@@ -200,7 +214,7 @@ async def _prepare(
         .order_by(ReviewReport.created_at.desc(), ReviewReport.id)
         .limit(1)
     )
-    if (
+    if not manual and (
         review is None
         or review.scope != "text_and_images"
         or not review.full_passed
@@ -221,7 +235,7 @@ async def _prepare(
         raise DeliveryError("Some reviewed images are unavailable or belong to another order.")
     images = [by_id[asset_id] for asset_id in ids]
     if any(
-        image.version_id != version.id or image.kind == "reference" or image.is_demo
+        image.version_id != version.id or image.kind in {"reference", "concept"} or image.is_demo
         for image in images
     ):
         raise DeliveryError("Generated images must belong to this exact version and mode.")
@@ -283,9 +297,10 @@ async def _prepare(
             "input": str(snapshot.id),
             "draft": version.draft,
             "assets": asset_records,
-            "review_id": str(review.id),
-            "review_result": review.result,
-            "review_key": review.operation_key,
+            "review_id": str(review.id) if review else None,
+            "review_result": review.result if review else None,
+            "review_key": review.operation_key if review else None,
+            "owner_acknowledgement": acknowledgement,
             "research": research.result,
         }
     )
@@ -303,9 +318,11 @@ async def _prepare(
         f"{delivery_id.hex}.zip",
         now(),
         asset_records,
-        review.command_id,
-        review.operation_key,
-        review.result,
+        review.command_id if review else command_id,
+        review.operation_key if review else "owner-manual-release",
+        {"asset_hashes": {str(image.id): image.sha256 for image in images}}
+        if manual
+        else review.result,
         fingerprint,
     )
 
@@ -471,9 +488,27 @@ async def release_version(
                     "version_id": str(version_id),
                     "delivery_id": str(receipt.id),
                     "content_hash": prepared.content_hash,
+                    "approval_method": "owner_override"
+                    if command.payload.get("override_review")
+                    else "review_passed",
                 },
             )
         )
+        if command.payload.get("override_review"):
+            session.add(
+                OrderEvent(
+                    order_id=order_id,
+                    kind="owner_release_override",
+                    visibility="internal",
+                    message=f"负责人已确认第 {version.version_number} 版现存问题并人工放行。",
+                    payload={
+                        "version_id": str(version_id),
+                        "command_id": str(command_id),
+                        "reason": command.payload.get("reason"),
+                        "acknowledgement": command.payload.get("owner_acknowledgement"),
+                    },
+                )
+            )
         await session.flush()
         return delivery_view(receipt)
 

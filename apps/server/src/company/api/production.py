@@ -141,3 +141,15 @@ async def get_production(order_id: UUID, database: DB, owner: Owner) -> Producti
         reviews=[ReportView.model_validate(row, from_attributes=True) for row in reviews],
         runs=[ReceiptView.model_validate(row, from_attributes=True) for row in runs],
     )
+
+
+@router.get("/{order_id}/release-review")
+async def get_release_review(order_id: UUID, version_id: UUID, database: DB, owner: Owner):
+    from company.services.owner_release import release_review
+
+    await require_order(database, order_id)
+    result = await release_review(database, order_id, version_id)
+    order = await require_order(database, order_id)
+    if order.pending_command_id:
+        result["blockers"].append("当前任务仍在处理，请等任务结束后确认放行。")
+    return result

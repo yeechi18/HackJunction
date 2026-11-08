@@ -74,3 +74,23 @@
 .versionImages img { display:block; width:100%; height:auto; object-fit:contain; background:#f4f7ee; }
 .versionImages span { display:block; font-size:8px; color:#a6b293; margin-top:7px; line-height:1.8; }
 @media(max-width:600px) { .versionSelectors { gap:12px; } .comparing { grid-template-columns:1fr; } .researchCard,.versionColumns>article,.reviewCard { padding:14px; } .pricing>strong { font-size:16px; }  .subheading { flex-wrap:wrap; gap:8px; } .versionState { gap:9px; padding:12px; } .draftField h4 { font-size:16px; } .metadata { gap:8px; }  }
+.disclosure:not([open]) > :not(summary) { display:none; }
+/* Readable neutral body text; green is reserved for interactive controls. */
+.panel { color:#465149; }
+.panel p,.panel li { color:#657168; font-size:13px; line-height:1.85; }
+.note,.empty { color:#788279; font-size:12px; }
+.subheading h3,.subheading strong,.question strong { color:#3d5042; font-size:14px; font-weight:500; }
+.pricing>strong { color:#314c3b; font-size:22px; }
+.pricing>span,.subheading time,.subheading>span,.metadata { color:#7d877d; font-size:11px; }
+.disclosure>summary { color:#586e5d; font-size:13px; }
+.question small,.claim small,.claim code { color:#7b867d; font-size:11px; }
+.releaseGate { background:#fffdf7; border:1px solid #d8c79b; border-left:4px solid #af8641; border-radius:10px; padding:24px; margin:10px 0 26px; }
+.releaseGate .subheading h3 { font-size:19px; font-weight:650; color:#253a2e; }
+.releaseGate > .note { font-size:14px; color:#43564a; }
+.releaseGate .warning { background:#faf1df; color:#785426; }
+.panel :global(.panel-heading) h2 { font-size:20px; font-weight:650; color:#253c2e; }
+.sectionHeading h3 { font-size:16px; font-weight:600; color:#344e3c; }
+.pricing { background:#f4f7ef; border-radius:8px; padding:20px; }
+.pricing>strong { font-size:28px; font-weight:650; color:#294831; }
+.researchCard { border-radius:10px; }
+.gateActions :global(.button-dark),.releaseGate :global(.manual-release > .button-dark) { min-height:44px; padding:12px 20px; font-size:14px; }

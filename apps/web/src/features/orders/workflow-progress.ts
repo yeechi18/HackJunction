@@ -17,7 +17,7 @@ export function workflowProgress(order: ProgressOrder): { title: string; descrip
     case "waiting_for_seller": return order.phase === "NEEDS_IMAGE"
       ? { title: "需要补充商品参考图", description: "请上传能够准确呈现本商品的参考图，图片制作和图文审校会继续处理。", tone: "waiting" }
       : order.phase === "AWAITING_SELLER"
-      ? { title: "成品已交付，等待你的确认", description: "请查看已放行的交付版本，可提出修改，或核对售价与 SKU 后确认模拟发布。", tone: "waiting" }
+      ? { title: "成品已交付，等待你的确认", description: "请查看已放行的交付版本，可提出修改，或核对售价与 SKU 后提交成品确认。", tone: "waiting" }
       : { title: "需要你补充或核对资料", description: "补充已有商品信息或表达偏好，保存后会重新审查。", tone: "waiting" };
     case "waiting_for_owner": return order.phase === "AWAITING_RELEASE"
       ? { title: "候选版本等待负责人核对", description: "负责人将核对文案、图片与审校记录。放行后，成品才会出现在卖家的交付包中。", tone: "waiting" }

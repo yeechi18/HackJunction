@@ -128,7 +128,13 @@ async def research_product(context: dict[str, Any], provider: MiMoProvider) -> R
         pricing_notes=(
             "仅为已提供 USD 竞品观察的价格范围；需核对规格可比性、日期、成本及卖家最终售价。"
             if price_range
-            else "缺少可用的 USD 价格证据，无法形成可靠价格区间；请补充带来源的竞品观察。"
+            else (
+                f"AI 试售价估算：USD {draft.estimated_trial_price.usd}。"
+                f"假设依据：{draft.estimated_trial_price.rationale}。"
+                "非竞品报价或市场事实；请核算采购、运费、平台费用与利润后确认售价。"
+                if draft.estimated_trial_price
+                else "待负责人填写试售价并核算成本。"
+            )
         ),
         usage=dict(call.usage),
         model=call.model,

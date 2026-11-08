@@ -797,12 +797,11 @@ class WorkflowContext:
                 round_index=state.get("production_round", 0),
                 commit_guard=self._owned_job,
             )
-        except MissingReferenceImage:
+        except MissingReferenceImage as error:
             return await self._wait_for_images(
                 state,
                 version_id,
-                "英文文案已通过文本审校，请上传可核实的商品参考图，"
-                "再继续制作并审校完整图片；目前尚未交付成品。",
+                "英文文案已通过文本审校；" + str(error) + "目前尚未交付成品。",
             )
         result = await review_step(
             self.lease.order_id,

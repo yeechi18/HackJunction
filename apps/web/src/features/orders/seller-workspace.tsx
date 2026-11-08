@@ -158,7 +158,7 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
       <section className={styles.summary} aria-label="订单概览"><span className={styles.status}>{orderStatusLabel(order)}</span><p>Amazon US · 美式英语 · 单 SKU</p><p>订单已保存在你的卖家账号中，可从“我的订单”找回。</p></section>
     </header>
     {order.phase === "AWAITING_SELLER" && <section className="surface workspace-panel" aria-label="下一步操作">
-      <h2>下一步：确认交付成品</h2><p>先查看文案与图片，再填写售价和 SKU 确认模拟发布；也可以提出修改。</p>
+      <h2>下一步：确认交付成品</h2><p>先查看文案与图片，再填写售价和 SKU 提交成品确认；也可以提出修改。</p>
       <div className="account-actions"><a className="button button-dark" href="#seller-confirmation">去确认成品 / 提出修改 ↓</a><a className="button button-outline" href="#delivered-package">查看交付包 ↓</a></div>
     </section>}
     <div className={styles.layout}>
@@ -172,18 +172,18 @@ export function SellerWorkspace({ orderId }: { orderId: string }) {
             <div className={`${styles.syncFooter} workspace-toolbar`}><span>最近检查 {checkedAt} · 每 {pollIntervalMs / 1000} 秒同步</span><button className="text-button" type="button" onClick={refresh}>刷新 ↻</button></div>
           </div>
         </section>
-        <CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} />
-        <DeliveryFactsPanel key={order.revision} order={order} csrfToken={csrfToken} refresh={refresh} />
+        <details className="workspace-disclosure"><summary>查看英文初稿</summary><div className="disclosure-body"><CopyPreviewPanel order={order} csrfToken={csrfToken} refresh={refresh} /></div></details>
+        <details className="workspace-disclosure"><summary>核对交付资料</summary><div className="disclosure-body"><DeliveryFactsPanel key={order.revision} order={order} csrfToken={csrfToken} refresh={refresh} /></div></details>
         <div id="delivered-package" style={{ scrollMarginTop: 24 }}><DeliverablesPanel orderId={order.id} onViewedVersionChange={onViewedVersionChange} /></div>
         <SellerPublicationPanel order={order} csrfToken={csrfToken} refresh={refresh} viewedVersionId={viewedDelivery?.orderId === order.id ? viewedDelivery.versionId : null} />
-        <SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} />
+        <details className="workspace-disclosure"><summary>联系负责人 / 查看处理记录</summary><div className="disclosure-body"><SellerSupportPanel orderId={order.id} csrfToken={csrfToken} refresh={refresh} /></div></details>
       </div>
       <aside className={styles.sidebar} aria-label="订单资料">
         <FactsPanel order={order} action={!editing && order.allowed_actions.includes("supplement") ? <button type="button" className={styles.editButton} onClick={() => { setEditing(true); setNotice(""); }}>补充商品资料 <span aria-hidden="true">↗</span></button> : undefined} />
         {notice && <div className="form-notice notice-success" role="status">{notice}</div>}
         {editing && <SupplementForm order={order} csrfToken={csrfToken} onSaved={() => { setEditing(false); setNotice("补充资料已保存，等待重新审查。"); refresh(); }} onCancel={() => setEditing(false)} refresh={refresh} />}
-        <section className="surface workspace-panel"><IntakeAnalysisPanel order={order} /></section>
-        <ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} />
+        <details className="workspace-disclosure"><summary>查看资料分析</summary><div className="disclosure-body"><section className="surface workspace-panel"><IntakeAnalysisPanel order={order} /></section></div></details>
+        <details className="workspace-disclosure"><summary>补充参考图片</summary><div className="disclosure-body"><ReferenceAssetsPanel orderId={order.id} csrfToken={csrfToken} /></div></details>
       </aside>
     </div>
   </>;

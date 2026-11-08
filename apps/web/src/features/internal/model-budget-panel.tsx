@@ -23,8 +23,8 @@ export function ModelBudgetPanel({ order, csrfToken, refresh }: { order: Interna
     } catch (e) { setMessage(errorMessage(e)); }
     finally { setBusy(false); }
   }
-  return <section id="model-budget" style={{ scrollMarginTop: 24 }} className="surface workspace-panel" aria-label="本单模型用量授权"><div className="panel-heading"><h2>本单用量与恢复</h2><span>由负责人授权</span></div>
-    {budget && <><p>已记录 {budget.used_tokens.toLocaleString()} / {budget.effective_limit.toLocaleString()} token。</p><p className="field-help">这不是免费额度。追加上限后，后续模型请求仍按实际用量计费；只影响本单，不改变其他订单或跳过审校。</p>{budget.exhausted && <p className="form-notice">已达到本单用量上限。先处理失败原因，再决定是否追加额度和恢复任务。</p>}<button className="button button-outline button-small" type="button" disabled={busy || !budget.exhausted || budget.additional_grant_available < 20000} onClick={() => void grant()}>{busy ? "正在授权…" : "授权本单追加 20000 token 上限"}</button></>}
+  return <section id="model-budget" style={{ scrollMarginTop: 24 }} className="surface workspace-panel budget-card" aria-label="本单模型用量授权"><div className="panel-heading"><h2>本单用量与恢复</h2><span>由负责人授权</span></div>
+    {budget && <><div className="budget-meter"><span>本单已用额度</span><strong>{budget.used_tokens.toLocaleString()} <small>/ {budget.effective_limit.toLocaleString()} tokens</small></strong><progress max={budget.effective_limit} value={Math.min(budget.used_tokens, budget.effective_limit)} aria-label="本单模型用量" /></div><p className="field-help">追加仅影响本单，后续调用按实际用量计费；不会自动恢复任务。</p>{!budget.exhausted && <p className="field-help">当前额度尚未用尽，无需追加。技术失败请在下方选择任务恢复。</p>}{budget.exhausted && <p className="form-notice">已达到本单用量上限。先处理失败原因，再决定是否追加额度和恢复任务。</p>}<button className="button button-outline button-small" type="button" disabled={busy || !budget.exhausted || budget.additional_grant_available < 20000} onClick={() => void grant()}>{busy ? "正在授权…" : "授权本单追加 20000 token 上限"}</button></>}
     {message && <p role="status">{message}</p>}
   </section>;
 }

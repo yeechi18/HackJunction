@@ -1,7 +1,7 @@
 """Deterministic image provider; no generative service or invented product appearance."""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +21,7 @@ class RenderedImage:
     height: int
     text_layers: list[dict[str, Any]]
     reference_sha256: str
+    metadata: dict = field(default_factory=dict)
 
 
 class ImageProvider:

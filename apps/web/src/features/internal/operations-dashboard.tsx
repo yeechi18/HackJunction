@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { DiagnosticsForOrder } from "./order-diagnostics";
+import { useState, useSyncExternalStore } from "react";
 import type { components } from "@/lib/generated/api";
 import { formatTime, type Order } from "@/features/orders/types";
 import { orderStatusLabel } from "@/features/orders/workflow-progress";
@@ -81,13 +82,20 @@ function IntakeQueue({ orders }: { orders: Order[] }) {
   </section>;
 }
 
+const subscribeLocation = (notify: () => void) => { window.addEventListener("popstate", notify); return () => window.removeEventListener("popstate", notify); };
+
 function RunLog({ runs }: { runs: OperationsRun[] }) {
+  const locationOrder = useSyncExternalStore(subscribeLocation, () => new URLSearchParams(window.location.search).get("order_id") ?? "", () => "");
+  const [selectedOrder, setOrderId] = useState<string | null>(null);
+  const orderId = selectedOrder ?? locationOrder;
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
-  const filtered = runs.filter(run => (!role || agentKey(run.role) === role) && (!status || statusGroup(run.status) === status));
+  const filtered = runs.filter(run => (!orderId || run.order_id === orderId) && (!role || agentKey(run.role) === role) && (!status || statusGroup(run.status) === status));
 
   return <section className="ops-panel"><h2>最近运行 <small>{filtered.length} / {runs.length}</small></h2>
+    {orderId && <DiagnosticsForOrder key={orderId} orderId={orderId} />}
     <div className="ops-filters field">
+      <select aria-label="筛选订单" value={orderId} onChange={event => setOrderId(event.target.value)}><option value="">全部订单</option>{Array.from(new Set([...(orderId ? [orderId] : []), ...runs.map(run => run.order_id)])).map(id => <option key={id} value={id}>{id.slice(0, 8)}</option>)}</select>
       <select aria-label="筛选 Agent" value={role} onChange={event => setRole(event.target.value)}>
         <option value="">全部 Agent</option>
         {Array.from(new Set([...agents.map(agent => agent.key), ...runs.map(run => agentKey(run.role))])).map(key => <option value={key} key={key}>{agentLabel(key)}</option>)}
@@ -98,12 +106,12 @@ function RunLog({ runs }: { runs: OperationsRun[] }) {
       </select>
     </div>
     {filtered.length ? <div className="ops-table-scroll"><table><thead><tr>
-      <th>Agent / 订单</th><th>记录时间</th><th>状态</th><th>模型 / Token</th><th>耗时</th><th>诊断</th>
+      <th>Agent / 订单</th><th>记录时间</th><th>状态</th><th>模型 / Token</th><th>耗时</th><th>问题与处理</th>
     </tr></thead><tbody>{filtered.map(run => <tr key={run.id}>
       <td><strong>{agentLabel(run.role)}</strong><br /><Link href={orderHref(run.order_id)}>{run.order_id.slice(0, 8)} ↗</Link></td>
       <td>{formatTime(run.created_at)}</td><td><span className={`ops-badge ${statusGroup(run.status)}`}>{statusLabel(run.status)}</span></td>
       <td>{run.model ?? "—"}<br />{typeof run.usage.total_tokens === "number" ? run.usage.total_tokens.toLocaleString("zh-CN") : "—"}</td>
-      <td>{run.elapsed_seconds == null ? "—" : `${run.elapsed_seconds.toFixed(1)} 秒`}</td><td>{run.error_summary ?? "—"}</td>
+      <td>{run.elapsed_seconds == null ? "—" : `${run.elapsed_seconds.toFixed(1)} 秒`}</td><td><div className="log-diagnosis"><strong>{run.step || agentLabel(run.role)}</strong><p>{run.error_summary ?? "未记录技术错误"}</p><button className="text-button" type="button" onClick={() => { setOrderId(run.order_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>定位本单并处理 ↑</button></div></td>
     </tr>)}</tbody></table></div> : <p className="panel-empty">暂无符合条件的运行记录</p>}
   </section>;
 }
@@ -206,7 +214,7 @@ function AgentMonitor({ runs }: { runs: OperationsRun[] }) {
       <p className="ops-trace-note">根据最近 {runs.length} 条工作流记录展示执行步骤、已保存的判断依据和产物。累计 Tokens 以筛选范围内已记录的用量为准。</p>
       {entries.length ? <ol className="ops-thread ops-compact-thread" aria-label="执行时间线">{entries.map(run => {
         const tokens = runTokens(run);
-        const status = run.status === "SIMULATED" ? "模拟上架完成" : statusLabel(run.status);
+        const status = run.status === "SIMULATED" ? "确认记录已保存" : statusLabel(run.status);
         return <li key={run.id}>
           <details className="ops-run-disclosure">
             <summary title={`${agentLabel(run.role)} · ${runStep(run)}`}>

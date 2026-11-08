@@ -133,7 +133,7 @@ async def test_research_without_price_evidence_returns_null_not_a_guessed_range(
     source["evidence"] = []
     result = await research_product(source, StubProvider(research_answer()))
     assert result.suggested_listing_price_range is None
-    assert "缺少" in result.pricing_notes
+    assert "待负责人" in result.pricing_notes
     answer = research_answer()
     answer["buyer_questions"][0]["evidence_ids"] = ["invented-source"]
     with pytest.raises(ProviderError, match="not supplied"):
@@ -311,3 +311,14 @@ async def test_selling_point_plan_preserves_seller_intent_without_promoting_unkn
         "style_only",
         "needs_confirmation",
     ]
+
+
+async def test_trial_estimate_does_not_become_market_evidence():
+    source = context()
+    source["evidence"] = []
+    answer = research_answer()
+    answer["estimated_trial_price"] = {"usd": "9.99", "rationale": "按桌面收纳用途估算，运费未知"}
+    result = await research_product(source, StubProvider(answer))
+    assert result.suggested_listing_price_range is None
+    assert "AI 试售价估算：USD 9.99" in result.pricing_notes
+    assert "非竞品报价或市场事实" in result.pricing_notes

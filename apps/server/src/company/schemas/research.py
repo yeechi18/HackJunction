@@ -64,9 +64,16 @@ class SellingPointPlan(BaseModel):
         return normalized
 
 
+class EstimatedPrice(BaseModel):
+    """A planning assumption, not an observed market price."""
+    usd: Decimal = Field(gt=0, le=100000, allow_inf_nan=False)
+    rationale: str = Field(min_length=1, max_length=1000)
+
+
 class ResearchDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    estimated_trial_price: EstimatedPrice | None = None
     buyer_questions: list[ResearchQuestion] = Field(min_length=1, max_length=20)
     market_notes: list[str] = Field(default_factory=list, max_length=20)
     missing_facts: list[str] = Field(default_factory=list, max_length=20)

@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     ark_vision_model: str = "doubao-seed-2-0-mini-260428"
     ark_research_model: str | None = None
     ark_research_effort: Literal["low", "high", "max"] = "low"
+    seedream_api_key: SecretStr | None = None
+    seedream_model: str = "doubao-seedream-5-0-pro-260628"
+    seedream_enabled: bool = False
+    seedream_auto_on_upload: bool = False
+    seedream_timeout_seconds: int = Field(default=180, ge=10, le=600)
+    seedream_order_attempt_limit: int = Field(default=12, ge=1, le=50)
     publish_mode: Literal["simulated", "sandbox", "production"] = "simulated"
     request_timeout_seconds: float = Field(default=60, gt=0, le=600)
     storage_backend: Literal["local"] = "local"

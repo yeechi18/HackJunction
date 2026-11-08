@@ -15,6 +15,7 @@ from company.api.auth import router as auth_router
 from company.api.copy_preview import router as copy_preview_router
 from company.api.deliverables import router as deliverables_router
 from company.api.health import router as health_router
+from company.api.image_tasks import router as image_tasks_router
 from company.api.integrations import router as integrations_router
 from company.api.internal import router as internal_router
 from company.api.orders import router as orders_router
@@ -73,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         support_router,
         copy_preview_router,
         integrations_router,
+        image_tasks_router,
     ):
         application.include_router(router, prefix="/api/v1")
     return application

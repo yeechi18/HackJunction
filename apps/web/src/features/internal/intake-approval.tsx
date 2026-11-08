@@ -35,6 +35,13 @@ export function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOr
   const submission = useRef<{ body: string; key: string } | null>(null);
   const canAccept = order.allowed_actions.includes("accept");
   const canReject = order.allowed_actions.includes("reject");
+  const unavailableReason = order.pending_command_id
+    ? "系统正在处理已提交的任务，完成后会自动更新接单操作。若长时间停留，请查看执行记录或用量与恢复。"
+    : order.workflow_status === "failed"
+      ? "资料初审未完成：任务已暂停，请先查看用量与恢复，处理失败原因后重试。"
+      : order.phase === "NEEDS_INFO"
+        ? "资料初审要求卖家补充信息；补充并完成重审后才能决定接单。"
+        : "资料初审尚未完成，暂不能同意或拒绝接单。初审完成后按钮会自动启用；若长时间排队，请检查后台工作进程。";
   const submittedCommand = order.commands.find(command => command.id === submittedId);
   const pendingSubmission = Boolean(submittedId && (!submittedCommand || ["queued", "running"].includes(submittedCommand.status)));
   const decisionStatus: Record<string, string> = {
@@ -63,17 +70,16 @@ export function DecisionPanel({ order, csrfToken, refresh }: { order: InternalOr
     finally { setBusy(false); }
   }
 
-  return <section className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>负责人决定</h2><span>初审后由负责人决定接单</span></div>
+  return <section className="surface workspace-panel decision-panel"><div className="panel-heading"><h2>接单决定</h2><span>{canAccept || canReject ? "待负责人决定" : "暂不可审批"}</span></div>
+    <p className="field-help">同意后开始正式研究与制作；本次接单不代表批准最终交付。</p>
     {submittedMessage && <p className="decision-command-status" role="status">{submittedMessage}</p>}
-    {!pendingSubmission && (canAccept || canReject) && <>
-      <p className="field-help">初审已整理，可结合资料、图片和文案方向决定是否接单。</p>
-      <div className="decision-actions">
-        {canAccept && <button className="button button-dark" type="button" disabled={busy} onClick={() => decide("accept")}>提交接单批准</button>}
-        {canReject && <button className="button button-outline danger-text" type="button" disabled={busy} onClick={() => decide("reject")}>提交拒绝接单</button>}
-      </div>
-    </>}
+    {!submittedMessage && !canAccept && !canReject && <p className="decision-command-status" role="status">{unavailableReason}</p>}
+    <div className="decision-actions">
+      <button className="button button-dark" type="button" disabled={busy || pendingSubmission || !canAccept} onClick={() => decide("accept")}>同意接单</button>
+      <button className="button button-outline danger-text" type="button" disabled={busy || pendingSubmission || !canReject} onClick={() => decide("reject")}>拒绝接单</button>
+      {!canAccept && !canReject && <button className="text-button" type="button" onClick={refresh}>刷新审批状态 ↻</button>}
+    </div>
     {busy && <p role="status">正在提交决定…</p>}
-    {!submittedMessage && !canAccept && !canReject && <p className="field-help">{intakeApprovalStatus(order)}</p>}
     {order.ai_reply_paused && isIntakeOrder(order) &&
       <Link className="text-link" href={`/internal/orders/${order.id}#support`}>另有人工客服工单，前往处理 ↗</Link>}
     {error && <ErrorNotice>{error}</ErrorNotice>}

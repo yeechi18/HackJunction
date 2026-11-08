@@ -7,7 +7,7 @@ export function OrderHeading({ order, internal = false }: { order: Order; intern
 
 export function WorkflowNotice({ order, internal = false }: { order: Order; internal?: boolean }) {
   const progress = internal && order.phase === "AWAITING_SELLER"
-    ? { title: "已放行交付，等待卖家确认", description: "负责人审批已完成。下一步由卖家在卖家端查看交付包，提出修改或填写售价与 SKU 后确认模拟发布。", tone: "waiting" }
+    ? { title: "已放行交付，等待卖家确认", description: "负责人审批已完成。下一步由卖家在卖家端查看交付包，提出修改或填写售价与 SKU 后提交成品确认。", tone: "waiting" }
     : workflowProgress(order);
   return <div className={`workflow-notice workflow-${progress.tone}`} role="status" aria-label="订单进度" data-workflow-status={order.workflow_status}><span className="workflow-notice-mark" aria-hidden="true">↳</span><div><strong>{progress.title}</strong><p>{progress.description}</p>{order.pending_command_id && <p className="mono-small">命令 {order.pending_command_id.slice(0, 8)} · 等待实际处理结果</p>}</div></div>;
 }

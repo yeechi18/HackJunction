@@ -178,7 +178,7 @@ async def bundle_context(postgres_test_settings, tmp_path):
                     settings,
                     CreateOrder(
                         product_details="Known test product specifications.",
-                        product_name="Fictional desk clips",
+                        product_name="Test desk clips",
                         facts=[
                             {"key": "material", "value": "silicone", "confirmed": True},
                             {"key": "pack_quantity", "value": "6", "confirmed": True},

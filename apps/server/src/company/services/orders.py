@@ -105,6 +105,20 @@ async def summary(database: AsyncSession, order: Order, *, internal: bool = Fals
         .order_by(Job.created_at.desc())
         .limit(1)
     )
+    # A successful delivery supersedes earlier production failures. A later failed
+    # seller request must still remain visible.
+    if failed_job and order.phase == "AWAITING_SELLER":
+        recovered = await database.scalar(
+            select(DeliverySnapshot.id)
+            .where(
+                DeliverySnapshot.order_id == order.id,
+                DeliverySnapshot.input_revision == order.revision,
+                DeliverySnapshot.delivered_at > failed_job.created_at,
+            )
+            .limit(1)
+        )
+        if recovered:
+            failed_job = None
     workflow_error = None
     if failed_job and not active_job:
         failed_step = await database.scalar(
@@ -458,7 +472,16 @@ async def enqueue_decision(
     database: AsyncSession, order_id: UUID, body: DecisionInput, idempotency_key: str
 ) -> QueuedCommand:
     order = await load_order(database, order_id, lock=True)
+    from company.services.owner_release import MANUAL_PHASES, verify_manual_release
+
+    manual = body.action == "release" and body.override_review
+    if body.override_review and body.action != "release":
+        raise HTTPException(422, "人工放行确认仅适用于交付放行。")
     request = body.model_dump(mode="json")
+    if not body.override_review:
+        request.pop("override_review")
+    if body.review_token is None:
+        request.pop("review_token")
     # Preserve the request hash of pre-M5 accept/reject commands for safe replay.
     if request["reason"] is None:
         request.pop("reason")
@@ -478,7 +501,9 @@ async def enqueue_decision(
         )
     if order.revision != body.expected_revision:
         raise HTTPException(409, "Order revision changed; refresh before submitting.")
-    if body.action not in allowed_actions(
+    if not (
+        manual and order.phase in MANUAL_PHASES and order.pending_command_id is None
+    ) and body.action not in allowed_actions(
         order.phase, internal=True, pending=order.pending_command_id is not None
     ):
         raise HTTPException(409, "This decision is unavailable in the current order state.")
@@ -493,7 +518,7 @@ async def enqueue_decision(
             .limit(1)
         )
         snapshot = await latest_snapshot(database, order_id)
-        if body.action == "release":
+        if body.action == "release" and not manual:
             if missing_delivery_fields(order.product_name, snapshot.facts):
                 raise HTTPException(
                     409, "Required SKU facts must be confirmed before formal delivery."
@@ -510,8 +535,18 @@ async def enqueue_decision(
             or version.status in {"vetoed", "delivered"}
         ):
             raise HTTPException(409, "Select this order's latest candidate for the current input.")
-        if body.action == "release" and not (
-            version.status == "review_passed" and version.text_passed and version.full_passed
+        if manual:
+            if not body.reason or not body.reason.strip():
+                raise HTTPException(422, "请记录人工放行理由。")
+            acknowledgement = await verify_manual_release(
+                database, order_id, body.version_id, body.review_token
+            )
+        if (
+            body.action == "release"
+            and not manual
+            and not (
+                version.status == "review_passed" and version.text_passed and version.full_passed
+            )
         ):
             raise HTTPException(409, "The complete text and image review must pass before release.")
         if body.action == "veto" and not (body.reason and body.reason.strip()):
@@ -524,6 +559,8 @@ async def enqueue_decision(
         request_hash=digest,
         payload=body.model_dump(mode="json"),
     )
+    if manual:
+        command.payload = {**command.payload, "owner_acknowledgement": acknowledgement}
     database.add(command)
     await database.flush()
     database.add_all(

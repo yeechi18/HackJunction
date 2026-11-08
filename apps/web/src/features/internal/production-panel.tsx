@@ -1,8 +1,10 @@
 "use client";
 
+import { ManualRelease } from "./manual-release";
 import { IntakeAnalysisPanel } from "@/features/orders/intake-analysis";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch, csrfHeaders, errorMessage } from "@/lib/api";
 import { formatTime, type InternalOrder, type DecisionCommand } from "@/features/orders/types";
@@ -17,7 +19,6 @@ type Version = Schema["VersionView"];
 type Research = Schema["ResearchView"];
 type Report = Schema["ReportView"];
 type Asset = Schema["AssetView"];
-type Publication = Schema["PublicationView"];
 type Props = { order: InternalOrder; csrfToken: string; refresh: () => void };
 
 function record(value: unknown): Record<string, unknown> {
@@ -29,14 +30,17 @@ function records(value: unknown): Record<string, unknown>[] { return Array.isArr
 function priceText(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }
 
 function EvidenceList({ items }: { items: Evidence[] }) {
-  return <div className={styles.evidenceList}>{items.length ? items.map(item => <details key={item.id}><summary><strong>{item.source}</strong><span>{item.is_demo && <i className="demo-tag">演示</i>}{({ success: "成功", partial: "部分信息", failed: "失败" } as Record<string, string>)[item.status] ?? item.status}</span></summary><p>{item.content}</p><div className={styles.metadata}><span>{formatTime(item.observed_at)}</span><span>{item.scope}</span>{item.data.price != null && <span>观察价 {priceText(item.data.price)} {text(item.data.currency)}</span>}</div>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">复核来源 ↗</a>}<code>{item.id}</code></details>) : <p className={styles.empty}>尚无外部竞品证据。研究 Agent 会分析已确认商品资料，价格依据不足时不提供定价建议。</p>}</div>;
+  return <div className={styles.evidenceList}>{items.length ? items.map(item => <details key={item.id}><summary><strong>{item.source}</strong><span>{item.is_demo && <i className="demo-tag">演示</i>}{({ success: "成功", partial: "部分信息", failed: "失败" } as Record<string, string>)[item.status] ?? item.status}</span></summary><p>{item.content}</p><div className={styles.metadata}><span>{formatTime(item.observed_at)}</span><span>{item.scope}</span>{item.data.price != null && <span>观察价 {priceText(item.data.price)} {text(item.data.currency)}</span>}</div>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">复核来源 ↗</a>}<code>{item.id}</code></details>) : <p className={styles.empty}>尚无外部竞品证据。研究 Agent 会分析已确认商品资料，缺少真实价格证据时，可单独提供 AI 试售价估算，不作为市场事实。</p>}</div>;
 }
 
 function ResearchCard({ research }: { research: Research }) {
   const result = record(research.result);
   const range = record(result.suggested_listing_price_range);
   const questions = records(result.buyer_questions);
-  return <article className={styles.researchCard}><div className={styles.subheading}><h3>调研分析（待核验） · 资料版本 {research.input_revision}</h3><time>{formatTime(research.created_at)}</time></div><div className={styles.pricing}><span>商品售价参考区间</span><strong>{Object.keys(range).length ? `${priceText(range.low)} – ${priceText(range.high)} ${text(range.currency)}` : "暂无定价建议"}</strong>{range.is_demo === true && <i className="demo-tag">演示观察</i>}<p>{text(result.pricing_notes) || "未记录价格依据。"}</p>{strings(range.evidence_ids).length > 0 && <p>依据：{strings(range.evidence_ids).map(id => id.slice(0, 8)).join("、")}</p>}</div>{records(result.selling_point_plan).length > 0 && <details className={styles.disclosure}><summary>商家卖点需求与采用策略 <span>＋</span></summary>{records(result.selling_point_plan).map((item, index) => <div className={styles.question} key={index}><strong>{text(item.request)}</strong><p>{({ use_confirmed_fact: "采用已确认事实", style_only: "表达与排版偏好", needs_confirmation: "需补充依据" } as Record<string, string>)[text(item.strategy)] ?? text(item.strategy)} · {text(item.explanation)}</p><small>事实依据：{strings(item.fact_ids).join("、") || "无"}</small></div>)}</details>}{strings(result.market_notes).length > 0 && <ul className={styles.notes}>{strings(result.market_notes).map((item, index) => <li key={index}>{item}</li>)}</ul>}{questions.length > 0 && <details className={styles.disclosure}><summary>买家问题与证据 <span>＋</span></summary>{questions.map((item, index) => <div className={styles.question} key={index}><strong>{text(item.question)}</strong><p>{item.applicable === false ? "本商品不适用" : "适用"} · 证据：{strings(item.evidence_ids).join("、") || "尚无"}</p>{strings(item.missing_facts).length > 0 && <p>待确认：{strings(item.missing_facts).join("、")}</p>}</div>)}</details>}</article>;
+  const estimate = record(result.estimated_trial_price);
+  const hasRange = range.low != null && range.high != null;
+  const hasEstimate = estimate.usd != null;
+  return <article className={styles.researchCard}><div className={styles.subheading}><h3>调研分析（待核验） · 资料版本 {research.input_revision}</h3><time>{formatTime(research.created_at)}</time></div><div className={styles.pricing}><span>{hasRange ? "竞品观察价格区间" : hasEstimate ? "试售价建议" : "定价分析"}</span><strong>{hasRange ? `${priceText(range.low)} – ${priceText(range.high)} ${text(range.currency)}` : hasEstimate ? `USD ${priceText(estimate.usd)}` : "暂未形成试售价"}</strong>{hasRange && hasEstimate && <p>AI 试售价估算：USD {priceText(estimate.usd)}</p>}{range.is_demo === true && <i className="demo-tag">演示观察</i>}<details className={styles.disclosure}><summary>查看定价依据 <span aria-hidden="true">⌄</span></summary>{hasEstimate && <p>{text(estimate.rationale)} · AI 估算，非真实竞品报价；需核算成本与利润后确认。</p>}<p>{text(result.pricing_notes) || "未记录价格依据。"}</p></details>{strings(range.evidence_ids).length > 0 && <p>依据：{strings(range.evidence_ids).map(id => id.slice(0, 8)).join("、")}</p>}</div><details className={styles.disclosure}><summary>查看研究详情、卖点策略与买家问题 <span aria-hidden="true">⌄</span></summary><div>{records(result.selling_point_plan).length > 0 && <details className={styles.disclosure}><summary>商家卖点需求与采用策略 <span>＋</span></summary>{records(result.selling_point_plan).map((item, index) => <div className={styles.question} key={index}><strong>{text(item.request)}</strong><p>{({ use_confirmed_fact: "采用已确认事实", style_only: "表达与排版偏好", needs_confirmation: "需补充依据" } as Record<string, string>)[text(item.strategy)] ?? text(item.strategy)} · {text(item.explanation)}</p><small>事实依据：{strings(item.fact_ids).join("、") || "无"}</small></div>)}</details>}{strings(result.market_notes).length > 0 && <ul className={styles.notes}>{strings(result.market_notes).map((item, index) => <li key={index}>{item}</li>)}</ul>}{questions.length > 0 && <details className={styles.disclosure}><summary>买家问题与证据 <span>＋</span></summary>{questions.map((item, index) => <div className={styles.question} key={index}><strong>{text(item.question)}</strong><p>{item.applicable === false ? "本商品不适用" : "适用"} · 证据：{strings(item.evidence_ids).join("、") || "尚无"}</p>{strings(item.missing_facts).length > 0 && <p>待确认：{strings(item.missing_facts).join("、")}</p>}</div>)}</details>}</div></details></article>;
 }
 
 function DraftContent({ version, assets }: { version: Version; assets: Asset[] }) {
@@ -76,6 +80,7 @@ function ReleaseGate({ order, version, latest, csrfToken, refresh, showLatest }:
   const viewingLatest = version.id === latest.id;
   const candidate = viewingLatest && currentInputs && !alreadyDecided && !["vetoed", "delivered"].includes(version.status);
   const canRelease = candidate && order.allowed_actions.includes("release") && version.status === "review_passed" && version.full_passed && version.text_passed;
+  const canManual = candidate && !canRelease && ["AWAITING_RELEASE", "REVIEW", "NEEDS_IMAGE"].includes(order.phase);
   const canVeto = candidate && order.allowed_actions.includes("veto");
   const staleReason = Boolean(reason.trim() && reasonVersion !== version.id);
   async function decide(action: "release" | "veto") {
@@ -92,12 +97,11 @@ function ReleaseGate({ order, version, latest, csrfToken, refresh, showLatest }:
     } catch (caught) { setError(errorMessage(caught)); if (caught instanceof ApiError && caught.status === 409) refresh(); }
     finally { setBusy(false); }
   }
-  return <div id="release-review" style={{ scrollMarginTop: 24 }} className={styles.releaseGate} aria-label="负责人放行审批"><div className={styles.subheading}><h3>{viewingLatest ? "当前最新候选" : "当前查看历史版本"} · v{version.version_number}</h3><span>绑定本版文案与图片</span></div>{!viewingLatest && <div className={styles.warning}>当前查看 v{version.version_number}，最新候选为 v{latest.version_number}。请核对最新版正文与图片后再决定。<button className="text-button" type="button" onClick={showLatest}>切回最新版 v{latest.version_number}</button></div>}<p className={styles.note}>文案审校：{version.text_passed ? "通过" : "未通过"}；完整图文审校：{version.full_passed ? "通过" : "未通过"}。</p>{!version.full_passed && <p className={styles.warning}>完整图文审校尚未通过，当前不能放行交付。</p>}<div className="field"><label htmlFor="veto-reason">退回修改原因（只有退回时填写）</label><textarea id="veto-reason" rows={3} value={reason} maxLength={2000} disabled={busy || submittedPending} onChange={event => { if (!reason) setReasonVersion(version.id); setReason(event.target.value); }} placeholder="否决时必填，说明这一版需要修改的具体问题。" /></div>{staleReason && <p className={styles.warning}>候选版本已更新，意见草稿仍保留。<button className="text-button" onClick={() => setReasonVersion(version.id)} type="button">已核对，将意见用于 v{version.version_number}</button></p>}{(order.delivery_blockers ?? []).map((reason, i) => <p className={styles.warning} key={i}>{reason}</p>)}<div className={styles.gateActions}>{<button type="button" className="button button-dark button-small" disabled={busy || submittedPending || !canRelease} onClick={() => decide("release")} title={canRelease ? "将本版已审校成品正式交付给卖家" : (order.delivery_blockers ?? []).join("；") || "本版尚未满足审校或审批条件"}>同意放行并交付</button>}{order.allowed_actions.includes("veto") && <button type="button" className="button button-outline button-small danger-text" disabled={busy || submittedPending || !canVeto || !reason.trim() || staleReason} onClick={() => decide("veto")}>退回修改本版</button>}</div>{submittedId && <p className={styles.success} role="status">{!command || ["queued", "running"].includes(command.status) ? "决定已入队，等待实际处理；交付尚未确认。" : command.status === "applied" ? "本次决定已生效，请查看订单动态与交付记录。" : `本次命令状态：${command.status}，请核对最新记录。`}</p>}{!canRelease && !canVeto && !submittedId && <p className={styles.note}>本版暂不能放行，请先处理上方提示；旧版本和已处理版本不能重复审批。</p>}{error && <p className={styles.error} role="alert">{error}</p>}</div>;
+  return <div id="release-review" style={{ scrollMarginTop: 24 }} className={styles.releaseGate} aria-label="负责人放行审批"><div className={styles.subheading}><h3>{viewingLatest ? "当前最新候选" : "当前查看历史版本"} · v{version.version_number}</h3><span>绑定本版文案与图片</span></div>{!viewingLatest && <div className={styles.warning}>当前查看 v{version.version_number}，最新候选为 v{latest.version_number}。请核对最新版正文与图片后再决定。<button className="text-button" type="button" onClick={showLatest}>切回最新版 v{latest.version_number}</button></div>}<p className={styles.note}>文案审校：{version.text_passed ? "通过" : "未通过"}；完整图文审校：{version.full_passed ? "通过" : "未通过"}。</p>{!version.full_passed && <p className={styles.warning}>完整图文审校尚未通过。你可以查看当前问题后，决定是否人工放行。</p>}<div className="field"><label htmlFor="veto-reason">退回修改原因（只有退回时填写）</label><textarea id="veto-reason" rows={3} value={reason} maxLength={2000} disabled={busy || submittedPending} onChange={event => { if (!reason) setReasonVersion(version.id); setReason(event.target.value); }} placeholder="否决时必填，说明这一版需要修改的具体问题。" /></div>{staleReason && <p className={styles.warning}>候选版本已更新，意见草稿仍保留。<button className="text-button" onClick={() => setReasonVersion(version.id)} type="button">已核对，将意见用于 v{version.version_number}</button></p>}{(order.delivery_blockers ?? []).map((reason, i) => <p className={styles.warning} key={i}>{reason}</p>)}<div className={styles.gateActions}>{!canManual && <button type="button" className="button button-dark button-small" disabled={busy || submittedPending || !canRelease} onClick={() => decide("release")} title={canRelease ? "将本版已审校成品正式交付给卖家" : (order.delivery_blockers ?? []).join("；") || "本版尚未满足审校或审批条件"}>同意放行并交付</button>}{order.allowed_actions.includes("veto") && <button type="button" className="button button-outline button-small danger-text" disabled={busy || submittedPending || !canVeto || !reason.trim() || staleReason} onClick={() => decide("veto")}>退回修改本版</button>}</div>{canManual && <ManualRelease key={version.id} order={order} versionId={version.id} versionNumber={version.version_number} csrfToken={csrfToken} refresh={refresh} />}{submittedId && <p className={styles.success} role="status">{!command || ["queued", "running"].includes(command.status) ? "决定已入队，等待实际处理；交付尚未确认。" : command.status === "applied" ? "本次决定已生效，请查看订单动态与交付记录。" : `本次命令状态：${command.status}，请核对最新记录。`}</p>}{!canRelease && !canVeto && !submittedId && <p className={styles.note}>常规放行条件尚未满足；可查看上方问题后决定是否人工放行。旧版本和已处理版本不能重复审批。</p>}{error && <p className={styles.error} role="alert">{error}</p>}</div>;
 }
 
 export function ProductionPanel({ order, csrfToken, refresh }: Props) {
   const [production, setProduction] = useState<Production | null>(null);
-  const [publication, setPublication] = useState<Publication | null>(null);
   const [selectedVersion, setSelectedVersion] = useState("");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -113,14 +117,13 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
     async function load() {
       let denied = false;
       try {
-        const [artifacts, observations, images, publishing] = await Promise.all([
+        const [artifacts, observations, images] = await Promise.all([
           apiFetch<Production>(`/internal/orders/${order.id}/production`, { signal: controller.signal }),
           apiFetch<{ items: Evidence[] }>(`/internal/orders/${order.id}/evidence`, { signal: controller.signal }),
           apiFetch<{ items: Asset[] }>(`/orders/${order.id}/assets`, { signal: controller.signal }),
-          apiFetch<Publication>(`/orders/${order.id}/publication`, { signal: controller.signal }),
         ]);
-        if (active) { setProduction(artifacts); setPublication(publishing); setEvidence(observations.items); setAssets(images.items); setError(""); }
-      } catch (caught) { if (active) { setError(errorMessage(caught)); denied = caught instanceof ApiError && [401, 403].includes(caught.status ?? 0); if (denied) { setProduction(null); setPublication(null); setEvidence([]); setAssets([]); } } }
+        if (active) { setProduction(artifacts); setEvidence(observations.items); setAssets(images.items); setError(""); }
+      } catch (caught) { if (active) { setError(errorMessage(caught)); denied = caught instanceof ApiError && [401, 403].includes(caught.status ?? 0); if (denied) { setProduction(null); setEvidence([]); setAssets([]); } } }
       finally { if (active && !denied) timer = setTimeout(() => void load(), delay); }
     }
     void load();
@@ -128,16 +131,10 @@ export function ProductionPanel({ order, csrfToken, refresh }: Props) {
   }, [order.id, delay, revision]);
 
   return <section className={`surface workspace-panel ${styles.panel}`} aria-labelledby="production-title"><div className="panel-heading"><h2 id="production-title">Agent 研究与内容产物</h2><button className="text-button" type="button" onClick={() => setRevision(value => value + 1)}>刷新 ↻</button></div>{error && <p className={styles.error} role="alert">{error}</p>}
+    {latestVersion && viewedVersion && <ReleaseGate order={order} version={viewedVersion} latest={latestVersion} showLatest={() => setSelectedVersion("")} csrfToken={csrfToken} refresh={() => { setRevision(value => value + 1); refresh(); }} />}
     <IntakeAnalysisPanel order={order} /><p className={styles.note}>研究、生成和审校由对应 Agent 自动完成。此处查看产物与依据；负责人可以放行或否决，修改由 Agent 执行。</p><details className={styles.disclosure}><summary>研究依据（只读） <span>{evidence.length} 条 ＋</span></summary><EvidenceList items={evidence} /></details>
     <div className={styles.sectionHeading}><h3>研究包</h3><span>{production?.research.length ?? 0} 份</span></div>{production?.research.length ? production.research.map(item => <ResearchCard research={item} key={item.id} />) : <p className={styles.empty}>负责人批准接单后，研究Agent会自动生成研究包；初审与文案方向已在上方展示。</p>}
-    <div className={styles.sectionHeading}><h3>版本、声明与审校</h3><span>{production?.versions.length ?? 0} 个版本</span></div>{production ? <VersionPanel production={production} selected={selectedVersion} onSelect={setSelectedVersion} assets={assets} /> : <p className={styles.empty}>正在读取内部产物…</p>}
-    {latestVersion && viewedVersion && <ReleaseGate order={order} version={viewedVersion} latest={latestVersion} showLatest={() => setSelectedVersion("")} csrfToken={csrfToken} refresh={() => { setRevision(value => value + 1); refresh(); }} />}
-    {publication && <div className={styles.run}>
-      <div><strong>定价与上架</strong><span>{publication.status === "SIMULATED" ? "模拟上架完成" : publication.attempt ? publication.status : "等待上架"}</span></div>
-      {publication.confirmation && <p>卖家确认 {publication.confirmation.currency} {publication.confirmation.listing_price} · SKU {publication.confirmation.seller_sku}</p>}
-      {publication.notice && <p>{publication.notice}</p>}
-      {publication.listing_url && <a className="text-link" href={publication.listing_url}>查看商品页 ↗</a>}
-    </div>}
-    <details className={styles.disclosure}><summary>生产运行记录 <span>{production?.runs.length ?? 0} 次 ＋</span></summary>{production?.runs.map(run => <div className={styles.run} key={run.id}><div><strong>{({ research: "研究", generation: "生成", review: "审校", images: "图片" } as Record<string, string>)[run.role] ?? run.role}</strong><span>{run.status} · 尝试 {run.attempts} 次</span></div><p>{run.model ?? "模型待记录"} · 资料版本 {run.input_revision} · Token {priceText(run.usage.total_tokens)} · {run.elapsed_seconds == null ? "耗时未记录" : `${run.elapsed_seconds.toFixed(2)}s`}</p>{run.error_summary && <p className={styles.error}>{run.error_summary}</p>}</div>)}</details>
+    <details className="owner-tool"><summary>查看版本、文案与审校 · {production?.versions.length ?? 0} 个版本</summary><div className="owner-tool-body">{production ? <VersionPanel production={production} selected={selectedVersion} onSelect={setSelectedVersion} assets={assets} /> : <p className={styles.empty}>正在读取内部产物…</p>}</div></details>
+    <Link className="text-link" href={`/internal/operations/runs?order_id=${order.id}`}>运行日志 · 查看执行步骤与问题处理 ↗</Link>
   </section>;
 }

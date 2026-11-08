@@ -6,9 +6,13 @@ import json
 from datetime import UTC, datetime
 from uuid import UUID
 
+import psycopg
+from sqlalchemy.exc import OperationalError
+
 from company.config import Settings, get_settings
 from company.persistence.database import Database
 from company.runtime import configure_asyncio
+from company.services.automatic_images import process_one_image_task
 from company.services.workflow import WorkflowError, process_one_job
 
 
@@ -24,12 +28,30 @@ async def run_worker(
     database = Database(settings)
     try:
         while True:
-            processed = await process_one_job(
-                settings,
-                order_id=order_id,
-                include_production=not intake_only,
-                include_images=not text_only,
-            )
+            try:
+                processed = await process_one_job(
+                    settings,
+                    order_id=order_id,
+                    include_production=not intake_only,
+                    include_images=not text_only,
+                )
+                if not intake_only and not text_only:
+                    image_processed = await process_one_image_task(
+                        database, settings, order_id=order_id
+                    )
+                    processed = processed or image_processed
+            except (OperationalError, psycopg.OperationalError):
+                # Do not print database exceptions: they may contain connection details.
+                # Durable jobs retain their leases; the next pass reclaims only eligible work.
+                if once or drain:
+                    raise WorkflowError(
+                        "Database temporarily unavailable; retry the worker."
+                    ) from None
+                print(
+                    json.dumps({"event": "worker_database_retry", "retry_seconds": 5}), flush=True
+                )
+                await asyncio.sleep(5)
+                continue
             check = await database.readiness()
             print(
                 json.dumps(

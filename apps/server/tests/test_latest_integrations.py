@@ -233,6 +233,10 @@ async def test_image_handoff_is_bound_to_facts_and_preserves_seller_reference_pe
 ):
     settings, app, client, new_order = asset_context
     oid = await new_order()
+    async with app.state.database.sessions() as session:
+        order = await session.get(Order, oid)
+        order.product_name = "Cable clip with real reference"
+        await session.commit()
     seller, seller_csrf = await client(oid)
     owner, owner_csrf = await client(owner=True)
     public = f"/api/v1/orders/{oid}"
