@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { overseasOrderPath } from "@/lib/service-packages";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { ApiError, apiFetch, errorMessage } from "@/lib/api";
 import type { components } from "@/lib/generated/api";
@@ -9,7 +10,7 @@ export type AccountSession = components["schemas"]["AccountSessionView"];
 const AccountContext = createContext<AccountSession | null>(null);
 
 export function safeReturnTo(value: string | null | undefined): string {
-  return value && (value === "/orders/new" || value === "/seller/orders" || /^\/o\/[a-f0-9-]{36}$/i.test(value)) ? value : "/seller/orders";
+  return value && (value === "/orders/new" || value === overseasOrderPath || value === "/seller/orders" || /^\/o\/[a-f0-9-]{36}$/i.test(value)) ? value : "/seller/orders";
 }
 
 export function useAccountSession() {
