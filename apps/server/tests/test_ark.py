@@ -150,7 +150,11 @@ async def test_ark_error_never_exposes_credential_or_provider_body():
 
 async def test_research_routes_to_ark_but_injected_test_provider_remains_authoritative():
     settings = Settings(
-        _env_file=None, research_provider="ark", ark_api_key=SecretStr("private-test-key")
+        _env_file=None,
+        app_env="development",
+        mimo_mode="live",
+        research_provider="ark",
+        ark_api_key=SecretStr("private-test-key"),
     )
     lease = SimpleNamespace(order_id="order", command_id="command")
     context = WorkflowContext(settings, None, lease)

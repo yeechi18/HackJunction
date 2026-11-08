@@ -108,6 +108,7 @@ async def test_live_research_node_passes_selected_ark_provider_not_default_mimo(
     settings = Settings(
         _env_file=None,
         app_env="development",
+        mimo_mode="live",
         research_provider="ark",
         ark_api_key=SecretStr("test-key"),
     )

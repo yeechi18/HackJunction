@@ -9,6 +9,16 @@
 - 代码与对应日志应一起提交。对话中的一次修改不一定是一次 Git 提交；若多轮修改合并提交，日志也合并记录。
 - 不记录密钥、密码、私有订单链接或真实卖家资料。运行日志保留在被忽略的本地 `var/reports/`。
 
+## 待提交 — 2026-11-08：修复 PR #4 合并后的 CI
+
+**问题：** PR #4 已合并到 `main`（`918ac32`）。GitHub Actions 的 Windows、macOS 离线检查与 Ubuntu PostgreSQL 检查均因相同的两项新增 Ark 测试失败：测试继承 CI 的 `APP_ENV=test / MIMO_MODE=fake`，导致实时研究路由选中模拟模型，或显式开发环境与模拟模式组合被配置校验拒绝。
+
+**修改：** 两项测试显式使用 `app_env="development"` 与 `mimo_mode="live"`，独立验证 Ark 路由和研究节点注入。测试只构造适配器或使用替身，不向真实模型发请求；保留应用的测试环境隔离和配置校验，不更改前端、后端业务逻辑或 CI 检查规则。
+
+**验证：** 使用 CI 相同环境变量，本机离线测试 132 项通过、114 项数据库测试按预期跳过；独立 PostgreSQL 完整测试 246 项通过。Python Ruff、前端 lint/typecheck、隔离生产构建（webpack）与 `git diff --check` 均通过。GitHub 三平台结果需以修复提交的新一轮 Actions 为准。
+
+**运行影响：** 仅测试与文档变更，无需重启服务、调整业务环境变量或迁移数据库。
+
 ## 2026-11-07 — `87f16e1`
 
 提交：`merge: integrate Shelfwise frontend with current backend workflows`
